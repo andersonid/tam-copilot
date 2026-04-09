@@ -1,3 +1,5 @@
+import logging
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -10,11 +12,25 @@ from .config import settings
 from .database import engine, async_session, Base
 from .seed import seed_data
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-5s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout,
+    force=True,
+)
+logging.getLogger("tam_copilot").setLevel(logging.DEBUG)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+logger = logging.getLogger("tam_copilot.app")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("startup | data_dir=%s static_dir=%s", settings.data_dir, settings.static_dir)
     Path(settings.data_dir).mkdir(parents=True, exist_ok=True)
-    settings.html_dir  # ensures html subdir exists
+    settings.html_dir
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.execute(
@@ -25,7 +41,9 @@ async def lifespan(app: FastAPI):
         )
     async with async_session() as db:
         await seed_data(db)
+    logger.info("startup.complete | ready to serve")
     yield
+    logger.info("shutdown | disposing engine")
     await engine.dispose()
 
 

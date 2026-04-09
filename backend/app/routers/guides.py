@@ -1,4 +1,7 @@
+import logging
+import time
 from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +12,7 @@ from ..models import Guide, Tag, LLMProvider, Customer, Product, DocumentType
 from ..schemas import GuideCreate, GuideRead, GuideListRead, CheckSimilarRequest, CheckSimilarResponse, SimilarGuide
 from ..crypto import decrypt_api_key
 
+logger = logging.getLogger("tam_copilot.guides")
 router = APIRouter(tags=["guides"])
 
 
@@ -57,12 +61,24 @@ async def list_guides(
 
 @router.post("/guides", response_model=GuideRead, status_code=201)
 async def create_guide(data: GuideCreate, db: AsyncSession = Depends(get_db)):
+    t_total = time.perf_counter()
+    logger.info(
+        "guide.create.start | customer_id=%s product_id=%s doc_type_id=%s provider_id=%s notes_len=%d",
+        data.customer_id, data.product_id, data.document_type_id, data.provider_id, len(data.input_notes),
+    )
+
     if data.provider_id:
         provider = await db.get(LLMProvider, data.provider_id)
     else:
         provider = await db.scalar(select(LLMProvider).where(LLMProvider.is_default == True))
     if not provider:
+        logger.error("guide.create.fail | reason=no_provider_available")
         raise HTTPException(400, "No LLM provider available")
+
+    logger.info(
+        "guide.create.provider | name=%s type=%s model=%s base_url=%s",
+        provider.name, provider.provider_type, data.model_override or provider.default_model, provider.base_url,
+    )
 
     title = data.title or "Generating..."
     guide = Guide(
@@ -81,6 +97,7 @@ async def create_guide(data: GuideCreate, db: AsyncSession = Depends(get_db)):
         guide.tags = await _get_or_create_tags(db, data.tags)
     db.add(guide)
     await db.flush()
+    logger.info("guide.create.record | guide_id=%d title=%r status=generating", guide.id, title)
 
     try:
         from ..services.llm_base import get_llm_client
@@ -96,45 +113,77 @@ async def create_guide(data: GuideCreate, db: AsyncSession = Depends(get_db)):
         product = await db.get(Product, data.product_id)
         customer = await db.get(Customer, data.customer_id)
 
+        slug = doc_type.slug if doc_type else "rca"
         system_prompt, user_msg = build_prompt(
-            doc_type_slug=doc_type.slug if doc_type else "rca",
+            doc_type_slug=slug,
             product_name=product.name if product else "",
             customer_name=customer.name if customer else "",
             kcs_subtype=data.kcs_subtype,
         )
+        logger.info(
+            "guide.create.prompt | doc_type=%s kcs_subtype=%s system_prompt_len=%d user_msg_len=%d",
+            slug, data.kcs_subtype, len(system_prompt), len(user_msg) + len(data.input_notes),
+        )
+
         model = data.model_override or provider.default_model
+        t_llm = time.perf_counter()
         structured = await client.generate_structured(system_prompt, user_msg + "\n\n" + data.input_notes, model)
+        llm_elapsed = time.perf_counter() - t_llm
+        section_count = len(structured.get("sections", []))
+        logger.info(
+            "guide.create.llm_done | model=%s elapsed=%.2fs sections=%d keys=%s",
+            model, llm_elapsed, section_count, list(structured.keys()),
+        )
 
         if not data.title and structured.get("title"):
             guide.title = structured["title"]
 
-        html_content = render_guide(structured, doc_type.slug if doc_type else "rca", data.kcs_subtype)
+        t_render = time.perf_counter()
+        html_content = render_guide(structured, slug, data.kcs_subtype)
+        render_elapsed = time.perf_counter() - t_render
         filename = f"guide_{guide.id}.html"
         html_path = settings.html_dir / filename
         html_path.write_text(html_content, encoding="utf-8")
         guide.html_filename = filename
         guide.status = "generated"
+        logger.info(
+            "guide.create.rendered | filename=%s html_size=%d elapsed=%.3fs",
+            filename, len(html_content), render_elapsed,
+        )
 
+        t_emb = time.perf_counter()
         try:
             emb = await get_embedding(data.input_notes)
+            emb_elapsed = time.perf_counter() - t_emb
             if emb is not None:
                 import numpy as np
                 guide.embedding = np.array(emb, dtype=np.float32).tobytes()
-        except Exception:
-            pass
+                logger.info("guide.create.embedding | dims=%d elapsed=%.2fs", len(emb), emb_elapsed)
+            else:
+                logger.warning("guide.create.embedding | result=null elapsed=%.2fs", emb_elapsed)
+        except Exception as emb_err:
+            logger.warning("guide.create.embedding | error=%s elapsed=%.2fs", emb_err, time.perf_counter() - t_emb)
 
         try:
             await db.execute(text(
                 "INSERT INTO guide_fts(rowid, title, input_notes) VALUES (:id, :title, :notes)"
             ), {"id": guide.id, "title": guide.title, "notes": data.input_notes})
-        except Exception:
-            pass
+            logger.info("guide.create.fts_indexed | guide_id=%d", guide.id)
+        except Exception as fts_err:
+            logger.warning("guide.create.fts_index_fail | error=%s", fts_err)
 
     except Exception as e:
         guide.status = "error"
         guide.title = data.title or f"Error: {str(e)[:100]}"
+        logger.error("guide.create.pipeline_error | error=%s", e, exc_info=True)
 
     await db.commit()
+
+    total_elapsed = time.perf_counter() - t_total
+    logger.info(
+        "guide.create.done | guide_id=%d status=%s title=%r total_elapsed=%.2fs",
+        guide.id, guide.status, guide.title, total_elapsed,
+    )
 
     result = await db.execute(
         select(Guide).options(
@@ -194,6 +243,9 @@ async def get_related_guides(guide_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/guides/{guide_id}/regenerate", response_model=GuideRead)
 async def regenerate_guide(guide_id: int, provider_id: int | None = None, db: AsyncSession = Depends(get_db)):
+    t_total = time.perf_counter()
+    logger.info("guide.regenerate.start | guide_id=%d provider_id=%s", guide_id, provider_id)
+
     result = await db.execute(
         select(Guide).options(
             selectinload(Guide.customer),
@@ -214,7 +266,10 @@ async def regenerate_guide(guide_id: int, provider_id: int | None = None, db: As
     else:
         provider = await db.scalar(select(LLMProvider).where(LLMProvider.is_default == True))
     if not provider:
+        logger.error("guide.regenerate.fail | guide_id=%d reason=no_provider_available", guide_id)
         raise HTTPException(400, "No LLM provider available")
+
+    logger.info("guide.regenerate.provider | name=%s model=%s", provider.name, provider.default_model)
 
     try:
         from ..services.llm_base import get_llm_client
@@ -226,19 +281,28 @@ async def regenerate_guide(guide_id: int, provider_id: int | None = None, db: As
         api_key = decrypt_api_key(provider.api_key_encrypted) if provider.api_key_encrypted else None
         client = get_llm_client(provider.provider_type, provider.base_url, api_key)
 
+        slug = guide.document_type.slug if guide.document_type else "rca"
         system_prompt, user_msg = build_prompt(
-            doc_type_slug=guide.document_type.slug if guide.document_type else "rca",
+            doc_type_slug=slug,
             product_name=guide.product.name if guide.product else "",
             customer_name=guide.customer.name if guide.customer else "",
             kcs_subtype=guide.kcs_subtype,
         )
         model = provider.default_model
+        t_llm = time.perf_counter()
         structured = await client.generate_structured(system_prompt, user_msg + "\n\n" + guide.input_notes, model)
+        llm_elapsed = time.perf_counter() - t_llm
+        logger.info(
+            "guide.regenerate.llm_done | model=%s elapsed=%.2fs sections=%d",
+            model, llm_elapsed, len(structured.get("sections", [])),
+        )
 
         if structured.get("title"):
             guide.title = structured["title"]
 
-        html_content = render_guide(structured, guide.document_type.slug if guide.document_type else "rca", guide.kcs_subtype)
+        t_render = time.perf_counter()
+        html_content = render_guide(structured, slug, guide.kcs_subtype)
+        render_elapsed = time.perf_counter() - t_render
         filename = f"guide_{guide.id}.html"
         html_path = settings.html_dir / filename
         html_path.write_text(html_content, encoding="utf-8")
@@ -246,27 +310,44 @@ async def regenerate_guide(guide_id: int, provider_id: int | None = None, db: As
         guide.provider_id = provider.id
         guide.model_used = model
         guide.status = "generated"
+        logger.info("guide.regenerate.rendered | html_size=%d elapsed=%.3fs", len(html_content), render_elapsed)
 
+        t_emb = time.perf_counter()
         try:
             emb = await get_embedding(guide.input_notes)
+            emb_elapsed = time.perf_counter() - t_emb
             if emb is not None:
                 import numpy as np
                 guide.embedding = np.array(emb, dtype=np.float32).tobytes()
-        except Exception:
-            pass
+                logger.info("guide.regenerate.embedding | dims=%d elapsed=%.2fs", len(emb), emb_elapsed)
+            else:
+                logger.warning("guide.regenerate.embedding | result=null elapsed=%.2fs", emb_elapsed)
+        except Exception as emb_err:
+            logger.warning("guide.regenerate.embedding | error=%s", emb_err)
 
     except Exception as e:
         guide.status = "error"
+        logger.error("guide.regenerate.pipeline_error | guide_id=%d error=%s", guide_id, e, exc_info=True)
 
     await db.commit()
     await db.refresh(guide)
+
+    total_elapsed = time.perf_counter() - t_total
+    logger.info(
+        "guide.regenerate.done | guide_id=%d status=%s total_elapsed=%.2fs",
+        guide.id, guide.status, total_elapsed,
+    )
     return guide
 
 
 @router.post("/guides/check-similar", response_model=CheckSimilarResponse)
 async def check_similar(data: CheckSimilarRequest, db: AsyncSession = Depends(get_db)):
+    t0 = time.perf_counter()
+    logger.info("guide.check_similar.start | notes_len=%d", len(data.input_notes))
     from ..services.similarity import find_similar_by_text
     similar = await find_similar_by_text(db, data.input_notes)
+    elapsed = time.perf_counter() - t0
+    logger.info("guide.check_similar.done | found=%d elapsed=%.2fs", len(similar), elapsed)
     return CheckSimilarResponse(
         has_similar=len(similar) > 0,
         similar_guides=similar,

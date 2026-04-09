@@ -1,3 +1,6 @@
+import logging
+import time
+
 import numpy as np
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +9,8 @@ from sqlalchemy.orm import selectinload
 from ..models import Guide, Customer, Product, DocumentType
 from ..schemas import SimilarGuide, SearchResult
 from ..config import settings
+
+logger = logging.getLogger("tam_copilot.similarity")
 
 
 def _cosine_similarity(a: bytes, b: bytes) -> float:
@@ -29,6 +34,7 @@ async def find_similar_by_embedding(
     if threshold is None:
         threshold = settings.similarity_threshold
 
+    t0 = time.perf_counter()
     result = await db.execute(
         select(Guide).options(
             selectinload(Guide.customer),
@@ -36,6 +42,7 @@ async def find_similar_by_embedding(
         ).where(Guide.embedding.is_not(None))
     )
     guides = result.scalars().all()
+    logger.info("similarity.embedding_search | candidates=%d threshold=%.2f exclude_id=%s", len(guides), threshold, exclude_id)
 
     scored = []
     for g in guides:
@@ -46,6 +53,9 @@ async def find_similar_by_embedding(
             scored.append((g, sim))
 
     scored.sort(key=lambda x: x[1], reverse=True)
+    elapsed = time.perf_counter() - t0
+    logger.info("similarity.embedding_search.done | matches=%d top_score=%.3f elapsed=%.3fs",
+                len(scored), scored[0][1] if scored else 0.0, elapsed)
     return [
         SimilarGuide(
             id=g.id,
@@ -60,15 +70,19 @@ async def find_similar_by_embedding(
 
 
 async def find_similar_by_text(db: AsyncSession, input_text: str) -> list[SimilarGuide]:
+    logger.info("similarity.text_search.start | text_len=%d", len(input_text))
     from .embeddings import get_embedding
     emb = await get_embedding(input_text)
     if emb is None:
+        logger.warning("similarity.text_search | embedding_failed, returning empty")
         return []
     emb_bytes = np.array(emb, dtype=np.float32).tobytes()
     return await find_similar_by_embedding(db, emb_bytes)
 
 
 async def _fts_search(db: AsyncSession, query: str, limit: int = 20) -> list[SearchResult]:
+    logger.info("search.fts.start | query=%r limit=%d", query, limit)
+    t0 = time.perf_counter()
     try:
         result = await db.execute(
             text(
@@ -87,6 +101,8 @@ async def _fts_search(db: AsyncSession, query: str, limit: int = 20) -> list[Sea
             {"query": query, "limit": limit},
         )
         rows = result.all()
+        elapsed = time.perf_counter() - t0
+        logger.info("search.fts.done | results=%d elapsed=%.3fs", len(rows), elapsed)
         return [
             SearchResult(
                 id=row[0],
@@ -99,14 +115,18 @@ async def _fts_search(db: AsyncSession, query: str, limit: int = 20) -> list[Sea
             )
             for row in rows
         ]
-    except Exception:
+    except Exception as e:
+        elapsed = time.perf_counter() - t0
+        logger.warning("search.fts.fail | error=%s elapsed=%.3fs", e, elapsed)
         return []
 
 
 async def _semantic_search(db: AsyncSession, query: str, limit: int = 20) -> list[SearchResult]:
+    logger.info("search.semantic.start | query=%r limit=%d", query, limit)
     from .embeddings import get_embedding
     emb = await get_embedding(query)
     if emb is None:
+        logger.warning("search.semantic | embedding_failed, returning empty")
         return []
     emb_bytes = np.array(emb, dtype=np.float32).tobytes()
 
@@ -125,6 +145,7 @@ async def _semantic_search(db: AsyncSession, query: str, limit: int = 20) -> lis
         if sim > 0.3:
             scored.append((g, sim))
     scored.sort(key=lambda x: x[1], reverse=True)
+    logger.info("search.semantic.done | candidates=%d matches=%d", len(guides), len(scored))
 
     return [
         SearchResult(

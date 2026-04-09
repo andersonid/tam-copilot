@@ -1,4 +1,7 @@
+import logging
 from typing import Protocol, runtime_checkable
+
+logger = logging.getLogger("tam_copilot.llm")
 
 
 @runtime_checkable
@@ -9,6 +12,7 @@ class LLMClient(Protocol):
 
 
 def get_llm_client(provider_type: str, base_url: str | None, api_key: str | None) -> LLMClient:
+    logger.info("llm_client.create | type=%s base_url=%s", provider_type, base_url)
     match provider_type:
         case "openai_compatible":
             from .llm_openai import OpenAICompatibleClient
@@ -20,4 +24,5 @@ def get_llm_client(provider_type: str, base_url: str | None, api_key: str | None
             from .llm_gemini import GeminiClient
             return GeminiClient(api_key=api_key or "")
         case _:
+            logger.error("llm_client.unknown_type | type=%s", provider_type)
             raise ValueError(f"Unknown provider type: {provider_type}")
