@@ -6,11 +6,13 @@ import {
   ToggleGroup,
   ToggleGroupItem,
   Spinner,
+  Alert,
   EmptyState,
   EmptyStateBody,
   Label,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
+import { SearchIcon } from "@patternfly/react-icons";
 import api from "../services/api";
 import type { SearchResult } from "../types/models";
 
@@ -22,14 +24,18 @@ export function SearchPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState("");
 
   const doSearch = async (q: string) => {
     if (!q.trim()) return;
     setLoading(true);
+    setError("");
     try {
       const { data } = await api.get("/search", { params: { query: q, mode } });
       setResults(data);
-    } catch {
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(msg || "Search failed. Please try again.");
       setResults([]);
     }
     setLoading(false);
@@ -37,12 +43,15 @@ export function SearchPage() {
   };
 
   useEffect(() => {
-    if (params.get("q")) doSearch(params.get("q")!);
+    const q = params.get("q");
+    if (q) doSearch(q);
   }, [params.get("q"), mode]);
 
   return (
     <>
-      <Title headingLevel="h1" size="2xl" style={{ marginBottom: 16 }}>Search Guides</Title>
+      <Title headingLevel="h1" size="2xl" style={{ marginBottom: 16 }}>
+        Search Guides
+      </Title>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center" }}>
         <SearchInput
@@ -50,7 +59,12 @@ export function SearchPage() {
           value={query}
           onChange={(_e, v) => setQuery(v)}
           onSearch={() => doSearch(query)}
-          onClear={() => { setQuery(""); setResults([]); setSearched(false); }}
+          onClear={() => {
+            setQuery("");
+            setResults([]);
+            setSearched(false);
+            setError("");
+          }}
           style={{ maxWidth: 480 }}
         />
         <ToggleGroup>
@@ -65,18 +79,34 @@ export function SearchPage() {
         </ToggleGroup>
       </div>
 
-      {loading && <Spinner />}
+      {loading && <Spinner aria-label="Searching" />}
 
-      {!loading && searched && results.length === 0 && (
-        <EmptyState titleText="No results" headingLevel="h3">
-          <EmptyStateBody>Try a different query or search mode.</EmptyStateBody>
+      {error && (
+        <Alert variant="danger" title="Search error" isInline style={{ marginBottom: 16 }}>
+          {error}
+        </Alert>
+      )}
+
+      {!loading && !error && searched && results.length === 0 && (
+        <EmptyState titleText="No results" headingLevel="h3" icon={SearchIcon}>
+          <EmptyStateBody>
+            No guides matched your query. Try different keywords or switch the search mode.
+          </EmptyStateBody>
         </EmptyState>
       )}
 
       {results.length > 0 && (
         <Table aria-label="Search results" variant="compact">
           <Thead>
-            <Tr><Th>Title</Th><Th>Customer</Th><Th>Product</Th><Th>Type</Th><Th>Date</Th><Th>Score</Th><Th>Source</Th></Tr>
+            <Tr>
+              <Th>Title</Th>
+              <Th>Customer</Th>
+              <Th>Product</Th>
+              <Th>Type</Th>
+              <Th>Date</Th>
+              <Th>Score</Th>
+              <Th>Source</Th>
+            </Tr>
           </Thead>
           <Tbody>
             {results.map((r) => (
@@ -87,7 +117,9 @@ export function SearchPage() {
                 <Td>{r.document_type_name}</Td>
                 <Td>{r.touchpoint_date}</Td>
                 <Td>{(r.score * 100).toFixed(0)}%</Td>
-                <Td><Label color={r.source === "semantic" ? "purple" : "blue"}>{r.source}</Label></Td>
+                <Td>
+                  <Label color={r.source === "semantic" ? "purple" : "blue"}>{r.source}</Label>
+                </Td>
               </Tr>
             ))}
           </Tbody>

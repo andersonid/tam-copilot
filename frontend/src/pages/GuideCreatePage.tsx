@@ -45,6 +45,7 @@ export function GuideCreatePage() {
   const [similar, setSimilar] = useState<SimilarGuide[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,15 +54,24 @@ export function GuideCreatePage() {
       api.get("/products"),
       api.get("/document-types"),
       api.get("/providers"),
-    ]).then(([c, p, d, prov]) => {
-      setCustomers(c.data);
-      setProducts(p.data);
-      setDocTypes(d.data);
-      setProviders(prov.data.filter((pr: LLMProvider) => pr.is_active));
-      const def = prov.data.find((pr: LLMProvider) => pr.is_default);
-      if (def) setProviderId(String(def.id));
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    ])
+      .then(([c, p, d, prov]) => {
+        setCustomers(c.data);
+        setProducts(p.data);
+        setDocTypes(d.data);
+        setProviders(prov.data.filter((pr: LLMProvider) => pr.is_active));
+        const def = prov.data.find((pr: LLMProvider) => pr.is_default);
+        if (def) setProviderId(String(def.id));
+        setLoading(false);
+      })
+      .catch((err) => {
+        setLoadError(
+          err?.response?.data?.detail ??
+            err?.message ??
+            "Failed to load form data. Please check the backend connection."
+        );
+        setLoading(false);
+      });
   }, []);
 
   const selectedDocSlug = docTypes.find((d) => String(d.id) === docTypeId)?.slug;
@@ -72,7 +82,9 @@ export function GuideCreatePage() {
     try {
       const { data } = await api.post("/guides/check-similar", { input_notes: notes });
       setSimilar(data.similar ?? []);
-    } catch { /* non-blocking */ }
+    } catch {
+      /* non-blocking — similarity check is best-effort */
+    }
   };
 
   const handleSubmit = async () => {
@@ -86,19 +98,35 @@ export function GuideCreatePage() {
         provider_id: providerId ? Number(providerId) : undefined,
         touchpoint_date: date,
         input_notes: notes,
-        tags: tagsStr.split(",").map((t) => t.trim()).filter(Boolean),
+        tags: tagsStr
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
         kcs_subtype: isKcs ? kcsSubtype || "solution" : undefined,
       };
       const { data } = await api.post("/guides", payload);
       navigate(`/guides/${data.id}`);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data
+        ?.detail;
       setError(msg || "Failed to create guide");
       setSubmitting(false);
     }
   };
 
-  if (loading) return <Spinner />;
+  if (loading) return <Spinner aria-label="Loading form data" />;
+
+  if (loadError) {
+    return (
+      <Alert variant="danger" title="Failed to load form data" isInline>
+        {loadError}
+        <br />
+        <Button variant="link" isInline onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </Alert>
+    );
+  }
 
   return (
     <>
@@ -106,13 +134,14 @@ export function GuideCreatePage() {
         New Guide
       </Title>
 
-      {error && <Alert variant="danger" title={error} style={{ marginBottom: 16 }} />}
+      {error && <Alert variant="danger" title={error} isInline style={{ marginBottom: 16 }} />}
 
       {similar.length > 0 && (
-        <Alert variant="warning" title="Similar guides found" style={{ marginBottom: 16 }}>
+        <Alert variant="warning" title="Similar guides found" isInline style={{ marginBottom: 16 }}>
           {similar.map((s) => (
             <div key={s.id}>
-              <strong>{s.title}</strong> — {s.customer_name} / {s.product_name} ({(s.score * 100).toFixed(0)}% match)
+              <strong>{s.title}</strong> — {s.customer_name} / {s.product_name} (
+              {(s.score * 100).toFixed(0)}% match)
             </div>
           ))}
         </Alert>
@@ -120,23 +149,44 @@ export function GuideCreatePage() {
 
       <Form isHorizontal>
         <FormGroup label="Customer" isRequired fieldId="customer">
-          <FormSelect id="customer" value={customerId} onChange={(_e, v) => setCustomerId(v)} isRequired>
+          <FormSelect
+            id="customer"
+            value={customerId}
+            onChange={(_e, v) => setCustomerId(v)}
+            isRequired
+          >
             <FormSelectOption value="" label="Select customer..." isPlaceholder />
-            {customers.map((c) => <FormSelectOption key={c.id} value={String(c.id)} label={c.name} />)}
+            {customers.map((c) => (
+              <FormSelectOption key={c.id} value={String(c.id)} label={c.name} />
+            ))}
           </FormSelect>
         </FormGroup>
 
         <FormGroup label="Product" isRequired fieldId="product">
-          <FormSelect id="product" value={productId} onChange={(_e, v) => setProductId(v)} isRequired>
+          <FormSelect
+            id="product"
+            value={productId}
+            onChange={(_e, v) => setProductId(v)}
+            isRequired
+          >
             <FormSelectOption value="" label="Select product..." isPlaceholder />
-            {products.map((p) => <FormSelectOption key={p.id} value={String(p.id)} label={p.name} />)}
+            {products.map((p) => (
+              <FormSelectOption key={p.id} value={String(p.id)} label={p.name} />
+            ))}
           </FormSelect>
         </FormGroup>
 
         <FormGroup label="Document Type" isRequired fieldId="doctype">
-          <FormSelect id="doctype" value={docTypeId} onChange={(_e, v) => setDocTypeId(v)} isRequired>
+          <FormSelect
+            id="doctype"
+            value={docTypeId}
+            onChange={(_e, v) => setDocTypeId(v)}
+            isRequired
+          >
             <FormSelectOption value="" label="Select type..." isPlaceholder />
-            {docTypes.map((d) => <FormSelectOption key={d.id} value={String(d.id)} label={d.name} />)}
+            {docTypes.map((d) => (
+              <FormSelectOption key={d.id} value={String(d.id)} label={d.name} />
+            ))}
           </FormSelect>
         </FormGroup>
 
@@ -144,7 +194,9 @@ export function GuideCreatePage() {
           <FormGroup label="KCS Subtype" fieldId="kcs-subtype">
             <FormSelect id="kcs-subtype" value={kcsSubtype} onChange={(_e, v) => setKcsSubtype(v)}>
               <FormSelectOption value="" label="Select subtype..." isPlaceholder />
-              {KCS_SUBTYPES.map((s) => <FormSelectOption key={s.value} value={s.value} label={s.label} />)}
+              {KCS_SUBTYPES.map((s) => (
+                <FormSelectOption key={s.value} value={s.value} label={s.label} />
+              ))}
             </FormSelect>
           </FormGroup>
         )}
@@ -152,7 +204,11 @@ export function GuideCreatePage() {
         <FormGroup label="LLM Provider" fieldId="provider">
           <FormSelect id="provider" value={providerId} onChange={(_e, v) => setProviderId(v)}>
             {providers.map((p) => (
-              <FormSelectOption key={p.id} value={String(p.id)} label={`${p.name}${p.is_default ? " (default)" : ""}`} />
+              <FormSelectOption
+                key={p.id}
+                value={String(p.id)}
+                label={`${p.name}${p.is_default ? " (default)" : ""}`}
+              />
             ))}
           </FormSelect>
         </FormGroup>
@@ -163,7 +219,9 @@ export function GuideCreatePage() {
 
         <FormGroup label="Tags" fieldId="tags">
           <TextInput id="tags" value={tagsStr} onChange={(_e, v) => setTagsStr(v)} />
-          <HelperText><HelperTextItem>Comma-separated</HelperTextItem></HelperText>
+          <HelperText>
+            <HelperTextItem>Comma-separated</HelperTextItem>
+          </HelperText>
         </FormGroup>
 
         <FormGroup label="Raw Notes / Input" isRequired fieldId="notes">
@@ -178,10 +236,17 @@ export function GuideCreatePage() {
         </FormGroup>
 
         <ActionGroup>
-          <Button variant="primary" onClick={handleSubmit} isLoading={submitting} isDisabled={submitting || !customerId || !productId || !docTypeId || !notes.trim()}>
+          <Button
+            variant="primary"
+            onClick={handleSubmit}
+            isLoading={submitting}
+            isDisabled={submitting || !customerId || !productId || !docTypeId || !notes.trim()}
+          >
             Generate Guide
           </Button>
-          <Button variant="link" onClick={() => navigate("/guides")}>Cancel</Button>
+          <Button variant="link" onClick={() => navigate("/guides")}>
+            Cancel
+          </Button>
         </ActionGroup>
       </Form>
     </>

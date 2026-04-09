@@ -12,8 +12,17 @@ import {
   Split,
   SplitItem,
   Alert,
+  EmptyState,
+  EmptyStateBody,
+  EmptyStateActions,
+  EmptyStateFooter,
 } from "@patternfly/react-core";
-import { ExternalLinkAltIcon, RedoIcon, TrashIcon } from "@patternfly/react-icons";
+import {
+  ExternalLinkAltIcon,
+  RedoIcon,
+  TrashIcon,
+  ExclamationCircleIcon,
+} from "@patternfly/react-icons";
 import api from "../services/api";
 import type { Guide } from "../types/models";
 
@@ -23,40 +32,89 @@ export function GuideDetailPage() {
   const [guide, setGuide] = useState<Guide | null>(null);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const load = () => {
-    api.get(`/guides/${id}`).then((r) => {
-      setGuide(r.data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    setError("");
+    api
+      .get(`/guides/${id}`)
+      .then((r) => {
+        setGuide(r.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err?.response?.data?.detail ?? err?.message ?? "Failed to load guide");
+        setLoading(false);
+      });
   };
 
   useEffect(load, [id]);
 
   const handleDelete = async () => {
     if (!confirm("Delete this guide permanently?")) return;
-    await api.delete(`/guides/${id}`);
-    navigate("/guides");
+    setActionError("");
+    try {
+      await api.delete(`/guides/${id}`);
+      navigate("/guides");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setActionError(msg || "Failed to delete guide");
+    }
   };
 
   const handleRegenerate = async () => {
     setRegenerating(true);
+    setActionError("");
     try {
       const { data } = await api.post(`/guides/${id}/regenerate`);
       setGuide(data);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setActionError(msg || "Regeneration failed");
     } finally {
       setRegenerating(false);
     }
   };
 
-  if (loading) return <Spinner />;
-  if (!guide) return <Alert variant="danger" title="Guide not found" />;
+  if (loading) return <Spinner aria-label="Loading guide" />;
+
+  if (error || !guide) {
+    return (
+      <EmptyState
+        headingLevel="h2"
+        titleText="Guide not found"
+        icon={ExclamationCircleIcon}
+      >
+        <EmptyStateBody>{error || "The requested guide does not exist."}</EmptyStateBody>
+        <EmptyStateFooter>
+          <EmptyStateActions>
+            <Button variant="primary" onClick={() => navigate("/guides")}>
+              Back to Guides
+            </Button>
+          </EmptyStateActions>
+        </EmptyStateFooter>
+      </EmptyState>
+    );
+  }
 
   return (
     <>
+      {actionError && (
+        <Alert
+          variant="danger"
+          title={actionError}
+          isInline
+          style={{ marginBottom: 16 }}
+          actionClose={<Button variant="plain" onClick={() => setActionError("")}>✕</Button>}
+        />
+      )}
+
       <Split hasGutter>
         <SplitItem isFilled>
-          <Title headingLevel="h1" size="2xl">{guide.title}</Title>
+          <Title headingLevel="h1" size="2xl">
+            {guide.title}
+          </Title>
         </SplitItem>
         <SplitItem>
           {guide.html_filename && (
@@ -70,10 +128,21 @@ export function GuideDetailPage() {
               View HTML
             </Button>
           )}
-          <Button variant="secondary" icon={<RedoIcon />} onClick={handleRegenerate} isLoading={regenerating} style={{ marginLeft: 8 }}>
+          <Button
+            variant="secondary"
+            icon={<RedoIcon />}
+            onClick={handleRegenerate}
+            isLoading={regenerating}
+            style={{ marginLeft: 8 }}
+          >
             Regenerate
           </Button>
-          <Button variant="danger" icon={<TrashIcon />} onClick={handleDelete} style={{ marginLeft: 8 }}>
+          <Button
+            variant="danger"
+            icon={<TrashIcon />}
+            onClick={handleDelete}
+            style={{ marginLeft: 8 }}
+          >
             Delete
           </Button>
         </SplitItem>
@@ -83,7 +152,15 @@ export function GuideDetailPage() {
         <DescriptionListGroup>
           <DescriptionListTerm>Status</DescriptionListTerm>
           <DescriptionListDescription>
-            <Label color={guide.status === "generated" ? "green" : guide.status === "error" ? "red" : "grey"}>
+            <Label
+              color={
+                guide.status === "generated"
+                  ? "green"
+                  : guide.status === "error"
+                    ? "red"
+                    : "grey"
+              }
+            >
               {guide.status}
             </Label>
           </DescriptionListDescription>
@@ -98,7 +175,9 @@ export function GuideDetailPage() {
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>Document Type</DescriptionListTerm>
-          <DescriptionListDescription>{guide.document_type?.name ?? "—"}</DescriptionListDescription>
+          <DescriptionListDescription>
+            {guide.document_type?.name ?? "—"}
+          </DescriptionListDescription>
         </DescriptionListGroup>
         {guide.kcs_subtype && (
           <DescriptionListGroup>
@@ -108,7 +187,9 @@ export function GuideDetailPage() {
         )}
         <DescriptionListGroup>
           <DescriptionListTerm>Provider</DescriptionListTerm>
-          <DescriptionListDescription>{guide.provider?.name ?? "—"} / {guide.model_used ?? "—"}</DescriptionListDescription>
+          <DescriptionListDescription>
+            {guide.provider?.name ?? "—"} / {guide.model_used ?? "—"}
+          </DescriptionListDescription>
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>Touchpoint Date</DescriptionListTerm>
@@ -117,13 +198,26 @@ export function GuideDetailPage() {
         <DescriptionListGroup>
           <DescriptionListTerm>Tags</DescriptionListTerm>
           <DescriptionListDescription>
-            {guide.tags?.map((t) => <Label key={t.id} style={{ marginRight: 4 }}>{t.name}</Label>) ?? "—"}
+            {guide.tags?.map((t) => (
+              <Label key={t.id} style={{ marginRight: 4 }}>
+                {t.name}
+              </Label>
+            )) ?? "—"}
           </DescriptionListDescription>
         </DescriptionListGroup>
         <DescriptionListGroup>
           <DescriptionListTerm>Raw Input</DescriptionListTerm>
           <DescriptionListDescription>
-            <pre style={{ whiteSpace: "pre-wrap", maxHeight: 300, overflow: "auto", background: "#f5f5f5", padding: 12, borderRadius: 4 }}>
+            <pre
+              style={{
+                whiteSpace: "pre-wrap",
+                maxHeight: 300,
+                overflow: "auto",
+                background: "#f5f5f5",
+                padding: 12,
+                borderRadius: 4,
+              }}
+            >
               {guide.input_notes}
             </pre>
           </DescriptionListDescription>
