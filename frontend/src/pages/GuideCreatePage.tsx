@@ -13,6 +13,8 @@ import {
   Alert,
   Spinner,
   DatePicker,
+  HelperText,
+  HelperTextItem,
 } from "@patternfly/react-core";
 import api from "../services/api";
 import type { Customer, Product, DocumentType, LLMProvider, SimilarGuide } from "../types/models";
@@ -159,8 +161,9 @@ export function GuideCreatePage() {
           <DatePicker value={date} onChange={(_e, val) => setDate(val)} />
         </FormGroup>
 
-        <FormGroup label="Tags" fieldId="tags" helperText="Comma-separated">
+        <FormGroup label="Tags" fieldId="tags">
           <TextInput id="tags" value={tagsStr} onChange={(_e, v) => setTagsStr(v)} />
+          <HelperText><HelperTextItem>Comma-separated</HelperTextItem></HelperText>
         </FormGroup>
 
         <FormGroup label="Raw Notes / Input" isRequired fieldId="notes">

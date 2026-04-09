@@ -13,7 +13,8 @@ import {
   Form,
   Label,
   Spinner,
-  Alert,
+  HelperText,
+  HelperTextItem,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import { PlusCircleIcon, CheckCircleIcon } from "@patternfly/react-icons";
@@ -122,8 +123,9 @@ export function ProvidersPage() {
                 {PROVIDER_TYPES.map((t) => <FormSelectOption key={t.value} value={t.value} label={t.label} />)}
               </FormSelect>
             </FormGroup>
-            <FormGroup label="Base URL" fieldId="prov-url" helperText="Required for OpenAI-compatible, leave empty for Anthropic/Gemini">
+            <FormGroup label="Base URL" fieldId="prov-url">
               <TextInput id="prov-url" value={baseUrl} onChange={(_e, v) => setBaseUrl(v)} />
+              <HelperText><HelperTextItem>Required for OpenAI-compatible, leave empty for Anthropic/Gemini</HelperTextItem></HelperText>
             </FormGroup>
             <FormGroup label="API Key" isRequired fieldId="prov-key">
               <TextInput id="prov-key" type="password" value={apiKey} onChange={(_e, v) => setApiKey(v)} />

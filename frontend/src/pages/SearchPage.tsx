@@ -8,7 +8,6 @@ import {
   Spinner,
   EmptyState,
   EmptyStateBody,
-  EmptyStateHeader,
   Label,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
@@ -69,8 +68,7 @@ export function SearchPage() {
       {loading && <Spinner />}
 
       {!loading && searched && results.length === 0 && (
-        <EmptyState>
-          <EmptyStateHeader titleText="No results" headingLevel="h3" />
+        <EmptyState titleText="No results" headingLevel="h3">
           <EmptyStateBody>Try a different query or search mode.</EmptyStateBody>
         </EmptyState>
       )}
