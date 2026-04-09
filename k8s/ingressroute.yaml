@@ -1,0 +1,21 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: tam-copilot
+  namespace: tam-copilot
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`tam-copilot.nobre.ninja`)
+      kind: Rule
+      middlewares:
+        - name: security-headers
+          namespace: kube-system
+        - name: rate-limit
+          namespace: kube-system
+      services:
+        - name: tam-copilot
+          port: 8000
+  tls:
+    certResolver: letsencrypt

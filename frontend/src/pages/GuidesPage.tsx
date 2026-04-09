@@ -10,8 +10,8 @@ import {
   ToolbarItem,
   EmptyState,
   EmptyStateBody,
-  EmptyStateHeader,
-  EmptyStateIcon,
+  EmptyStateActions,
+  EmptyStateFooter,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import { PlusCircleIcon, CubesIcon } from "@patternfly/react-icons";
@@ -55,10 +55,13 @@ export function GuidesPage() {
       </Toolbar>
 
       {guides.length === 0 ? (
-        <EmptyState>
-          <EmptyStateHeader titleText="No guides yet" icon={<EmptyStateIcon icon={CubesIcon} />} headingLevel="h2" />
+        <EmptyState headingLevel="h2" titleText="No guides yet" icon={CubesIcon}>
           <EmptyStateBody>Create your first guide to get started.</EmptyStateBody>
-          <Button variant="primary" onClick={() => navigate("/guides/new")}>New Guide</Button>
+          <EmptyStateFooter>
+            <EmptyStateActions>
+              <Button variant="primary" onClick={() => navigate("/guides/new")}>New Guide</Button>
+            </EmptyStateActions>
+          </EmptyStateFooter>
         </EmptyState>
       ) : (
         <Table aria-label="Guides table" variant="compact">

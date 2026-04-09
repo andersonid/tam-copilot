@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   backend:
     build:
@@ -9,9 +7,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app/backend
-      - ./data:/app/data
-      - ./.env:/app/.env
+      - ./backend:/app/backend:Z
+      - ./data:/app/data:Z
+      - ./.env:/app/.env:Z
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///./data/tam_copilot.db
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -24,8 +22,8 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/index.html:/app/index.html
+      - ./frontend/src:/app/src:Z
+      - ./frontend/index.html:/app/index.html:Z
     command: npm run dev -- --host 0.0.0.0
     depends_on:
       - backend

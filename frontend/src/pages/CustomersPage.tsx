@@ -10,7 +10,6 @@ import {
   Spinner,
   EmptyState,
   EmptyStateBody,
-  EmptyStateHeader,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import { PlusCircleIcon } from "@patternfly/react-icons";
@@ -46,8 +45,7 @@ export function CustomersPage() {
       </Button>
 
       {customers.length === 0 ? (
-        <EmptyState>
-          <EmptyStateHeader titleText="No customers" headingLevel="h3" />
+        <EmptyState headingLevel="h3" titleText="No customers">
           <EmptyStateBody>Add your first customer above.</EmptyStateBody>
         </EmptyState>
       ) : (
