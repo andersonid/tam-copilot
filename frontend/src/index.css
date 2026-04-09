@@ -1,0 +1,49 @@
+@import url("https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700;900&family=Red+Hat+Text:wght@400;500;700&family=Red+Hat+Mono:wght@400;500;700&display=swap");
+
+:root {
+  --rh-red: #ee0000;
+  --rh-red-dark: #a30000;
+  --rh-black: #151515;
+  --rh-white: #ffffff;
+  --rh-gray-100: #f5f5f5;
+  --rh-gray-200: #d2d2d2;
+  --rh-gray-600: #6a6e73;
+}
+
+body {
+  margin: 0;
+  font-family: "Red Hat Text", "RedHatText", var(--pf-t--global--font--family--body), sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6,
+.pf-v5-c-page__header-brand-link,
+.pf-v5-c-nav__link {
+  font-family: "Red Hat Display", "RedHatDisplay", var(--pf-t--global--font--family--heading), sans-serif;
+}
+
+.pf-v5-c-page__header {
+  --pf-v5-c-page__header--BackgroundColor: var(--rh-black);
+}
+
+.rh-brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--rh-white);
+  font-family: "Red Hat Display", sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-decoration: none;
+}
+
+.rh-brand-logo .rh-hat {
+  width: 36px;
+  height: 36px;
+}
+
+.rh-brand-logo .rh-wordmark {
+  color: var(--rh-red);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
