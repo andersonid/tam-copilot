@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { AppLayout } from "./components/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -37,9 +38,11 @@ function AuthenticatedApp() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AuthenticatedApp />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AuthenticatedApp />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

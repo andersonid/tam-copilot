@@ -2,10 +2,11 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func, extract
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ..database import get_db
 from ..models import Guide, Customer, Product, DocumentType, LLMProvider, Tag, guide_tags
-from ..schemas import AnalyticsOverview, ChartDataPoint, TimeSeriesPoint
+from ..schemas import AnalyticsOverview, ChartDataPoint, TimeSeriesPoint, GuideListRead
 
 router = APIRouter(tags=["analytics"])
 
@@ -76,6 +77,18 @@ async def top_tags(db: AsyncSession = Depends(get_db)):
         .limit(20)
     )
     return [ChartDataPoint(label=row[0], value=row[1]) for row in result.all()]
+
+
+@router.get("/analytics/recent-guides", response_model=list[GuideListRead])
+async def recent_guides(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Guide).options(
+            selectinload(Guide.customer),
+            selectinload(Guide.product),
+            selectinload(Guide.document_type),
+        ).order_by(Guide.created_at.desc()).limit(5)
+    )
+    return result.scalars().all()
 
 
 @router.get("/analytics/provider-usage", response_model=list[ChartDataPoint])

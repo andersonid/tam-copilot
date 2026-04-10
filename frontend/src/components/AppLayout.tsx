@@ -11,31 +11,45 @@ import {
   Nav,
   NavList,
   NavItem,
+  NavExpandable,
   PageSection,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
   SearchInput,
-  Button,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
   Divider,
+  MenuToggle,
+  Switch,
 } from "@patternfly/react-core";
+import {
+  TachometerAltIcon,
+  BookOpenIcon,
+  PlusCircleIcon,
+  UsersIcon,
+  CogIcon,
+  SearchIcon,
+  MoonIcon,
+  AdjustIcon,
+} from "@patternfly/react-icons";
 import { useAuth } from "../context/AuthContext";
-
-const NAV_ITEMS = [
-  { path: "/", label: "Dashboard" },
-  { path: "/guides", label: "Guides" },
-  { path: "/guides/new", label: "New Guide" },
-  { path: "/customers", label: "Customers" },
-  { path: "/providers", label: "LLM Providers" },
-  { path: "/search", label: "Search" },
-  { path: "/settings", label: "Settings" },
-];
+import { useTheme } from "../context/ThemeContext";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { username, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [searchValue, setSearchValue] = useState("");
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [guidesExpanded, setGuidesExpanded] = useState(
+    location.pathname.startsWith("/guides") || location.pathname === "/",
+  );
+  const [adminExpanded, setAdminExpanded] = useState(
+    ["/customers", "/providers", "/settings"].includes(location.pathname),
+  );
 
   const handleSearch = () => {
     if (searchValue.trim()) {
@@ -43,12 +57,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
     }
   };
 
+  const navTo = (path: string) => navigate(path);
+  const isActive = (path: string) => location.pathname === path;
+
+  const logoSrc = theme === "dark" ? "/logo-tam-dark.png" : "/logo-tam-light.png";
+
   const masthead = (
     <Masthead>
       <MastheadMain>
         <MastheadBrand>
           <a href="/" className="rh-brand-logo" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
-            <img src="/logo-tam.png" alt="Red Hat Technical Account Management" />
+            <img src={logoSrc} alt="Red Hat Technical Account Management" />
           </a>
         </MastheadBrand>
       </MastheadMain>
@@ -65,12 +84,48 @@ export function AppLayout({ children }: { children: ReactNode }) {
               />
             </ToolbarItem>
             <ToolbarItem align={{ default: "alignEnd" }}>
-              <span style={{ marginRight: 12, color: "#d2d2d2" }}>
-                {username}
-              </span>
-              <Button variant="plain" onClick={logout} style={{ color: "#d2d2d2" }}>
-                Sign out
-              </Button>
+              <Dropdown
+                isOpen={userMenuOpen}
+                onOpenChange={setUserMenuOpen}
+                onSelect={() => setUserMenuOpen(false)}
+                toggle={(toggleRef) => (
+                  <MenuToggle
+                    ref={toggleRef}
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    isExpanded={userMenuOpen}
+                    variant="plain"
+                    style={{ color: "var(--pf-t--global--text--color--on-brand--default)" }}
+                  >
+                    {username}
+                  </MenuToggle>
+                )}
+              >
+                <DropdownList>
+                  <DropdownItem
+                    key="theme"
+                    component="div"
+                    onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {theme === "dark" ? <MoonIcon /> : <AdjustIcon />}
+                      <Switch
+                        id="theme-switch"
+                        label="Dark mode"
+                        isChecked={theme === "dark"}
+                        onChange={toggleTheme}
+                        isReversed
+                      />
+                    </span>
+                  </DropdownItem>
+                  <Divider key="sep" />
+                  <DropdownItem key="settings" onClick={() => navigate("/settings")}>
+                    Settings
+                  </DropdownItem>
+                  <DropdownItem key="logout" onClick={logout}>
+                    Sign out
+                  </DropdownItem>
+                </DropdownList>
+              </Dropdown>
             </ToolbarItem>
           </ToolbarContent>
         </Toolbar>
@@ -83,18 +138,49 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <PageSidebarBody>
         <Nav>
           <NavList>
-            {NAV_ITEMS.map((item) => (
-              <NavItem
-                key={item.path}
-                isActive={location.pathname === item.path}
-                onClick={() => navigate(item.path)}
-              >
-                {item.label}
+            <NavItem isActive={isActive("/")} onClick={() => navTo("/")}>
+              <TachometerAltIcon style={{ marginRight: 8 }} />
+              Dashboard
+            </NavItem>
+
+            <NavExpandable
+              title="Guides"
+              isActive={location.pathname.startsWith("/guides")}
+              isExpanded={guidesExpanded}
+              onExpand={(_e, val) => setGuidesExpanded(val)}
+            >
+              <NavItem isActive={isActive("/guides")} onClick={() => navTo("/guides")}>
+                <BookOpenIcon style={{ marginRight: 8 }} />
+                All Guides
               </NavItem>
-            ))}
+              <NavItem isActive={isActive("/guides/new")} onClick={() => navTo("/guides/new")}>
+                <PlusCircleIcon style={{ marginRight: 8 }} />
+                New Guide
+              </NavItem>
+            </NavExpandable>
+
+            <NavItem isActive={isActive("/search")} onClick={() => navTo("/search")}>
+              <SearchIcon style={{ marginRight: 8 }} />
+              Search
+            </NavItem>
+
+            <NavExpandable
+              title="Administration"
+              isActive={["/customers", "/providers", "/settings"].includes(location.pathname)}
+              isExpanded={adminExpanded}
+              onExpand={(_e, val) => setAdminExpanded(val)}
+            >
+              <NavItem isActive={isActive("/customers")} onClick={() => navTo("/customers")}>
+                <UsersIcon style={{ marginRight: 8 }} />
+                Customers
+              </NavItem>
+              <NavItem isActive={isActive("/providers")} onClick={() => navTo("/providers")}>
+                <CogIcon style={{ marginRight: 8 }} />
+                LLM Providers
+              </NavItem>
+            </NavExpandable>
           </NavList>
         </Nav>
-        <Divider style={{ margin: "16px 0" }} />
       </PageSidebarBody>
     </PageSidebar>
   );
