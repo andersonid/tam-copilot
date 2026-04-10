@@ -28,6 +28,7 @@ import {
   TachometerAltIcon,
   BookOpenIcon,
   PlusCircleIcon,
+  UploadIcon,
   UsersIcon,
   CogIcon,
   SearchIcon,
@@ -155,6 +156,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <NavItem isActive={isActive("/guides/new")} onClick={() => navTo("/guides/new")}>
                 <PlusCircleIcon style={{ marginRight: 8 }} />
                 New Guide
+              </NavItem>
+              <NavItem isActive={isActive("/guides/import")} onClick={() => navTo("/guides/import")}>
+                <UploadIcon style={{ marginRight: 8 }} />
+                Import HTML
               </NavItem>
             </NavExpandable>
 

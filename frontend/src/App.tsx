@@ -12,6 +12,7 @@ import { ProvidersPage } from "./pages/ProvidersPage";
 import { SearchPage } from "./pages/SearchPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { PublicGuidePage } from "./pages/PublicGuidePage";
+import { GuideImportPage } from "./pages/GuideImportPage";
 
 function AuthenticatedApp() {
   const { isAuthenticated } = useAuth();
@@ -26,6 +27,7 @@ function AuthenticatedApp() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/guides" element={<GuidesPage />} />
         <Route path="/guides/new" element={<GuideCreatePage />} />
+        <Route path="/guides/import" element={<GuideImportPage />} />
         <Route path="/guides/:id" element={<GuideDetailPage />} />
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/providers" element={<ProvidersPage />} />

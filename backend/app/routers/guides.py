@@ -2,7 +2,7 @@ import logging
 import time
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -184,6 +184,92 @@ async def create_guide(data: GuideCreate, db: AsyncSession = Depends(get_db)):
         "guide.create.done | guide_id=%d status=%s title=%r total_elapsed=%.2fs",
         guide.id, guide.status, guide.title, total_elapsed,
     )
+
+    result = await db.execute(
+        select(Guide).options(
+            selectinload(Guide.customer),
+            selectinload(Guide.product),
+            selectinload(Guide.document_type),
+            selectinload(Guide.provider),
+            selectinload(Guide.tags),
+        ).where(Guide.id == guide.id)
+    )
+    return result.scalar_one()
+
+
+@router.post("/guides/import", response_model=GuideRead, status_code=201)
+async def import_guide(
+    html_file: UploadFile = File(...),
+    title: str = Form(...),
+    customer_id: int = Form(...),
+    product_id: int = Form(...),
+    document_type_id: int = Form(...),
+    touchpoint_date: date = Form(default_factory=date.today),
+    tags: str = Form(default=""),
+    kcs_subtype: str | None = Form(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    t0 = time.perf_counter()
+    logger.info(
+        "guide.import.start | title=%r customer_id=%s product_id=%s doc_type_id=%s filename=%s",
+        title, customer_id, product_id, document_type_id, html_file.filename,
+    )
+
+    if not html_file.content_type or "html" not in html_file.content_type:
+        if html_file.filename and not html_file.filename.endswith((".html", ".htm")):
+            raise HTTPException(400, "Only HTML files are accepted")
+
+    html_bytes = await html_file.read()
+    html_content = html_bytes.decode("utf-8")
+    logger.info("guide.import.file_read | size=%d bytes", len(html_bytes))
+
+    tag_names = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+
+    guide = Guide(
+        title=title,
+        customer_id=customer_id,
+        product_id=product_id,
+        document_type_id=document_type_id,
+        touchpoint_date=touchpoint_date,
+        input_notes=f"[Imported from {html_file.filename or 'upload'}]",
+        status="generated",
+        kcs_subtype=kcs_subtype or None,
+    )
+    if tag_names:
+        guide.tags = await _get_or_create_tags(db, tag_names)
+    db.add(guide)
+    await db.flush()
+
+    from ..config import settings
+
+    filename = f"guide_{guide.id}.html"
+    html_path = settings.html_dir / filename
+    html_path.write_text(html_content, encoding="utf-8")
+    guide.html_filename = filename
+    logger.info("guide.import.saved | guide_id=%d filename=%s", guide.id, filename)
+
+    try:
+        from ..services.embeddings import get_embedding
+        import numpy as np
+
+        emb = await get_embedding(title + " " + html_content[:2000])
+        if emb is not None:
+            guide.embedding = np.array(emb, dtype=np.float32).tobytes()
+            logger.info("guide.import.embedding | dims=%d", len(emb))
+    except Exception as emb_err:
+        logger.warning("guide.import.embedding | error=%s", emb_err)
+
+    try:
+        await db.execute(text(
+            "INSERT INTO guide_fts(rowid, title, input_notes) VALUES (:id, :title, :notes)"
+        ), {"id": guide.id, "title": guide.title, "notes": guide.input_notes})
+    except Exception as fts_err:
+        logger.warning("guide.import.fts_index_fail | error=%s", fts_err)
+
+    await db.commit()
+
+    elapsed = time.perf_counter() - t0
+    logger.info("guide.import.done | guide_id=%d elapsed=%.2fs", guide.id, elapsed)
 
     result = await db.execute(
         select(Guide).options(
