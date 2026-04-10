@@ -17,7 +17,6 @@ import {
   EmptyStateActions,
   EmptyStateFooter,
   ClipboardCopy,
-  ClipboardCopyVariant,
 } from "@patternfly/react-core";
 import {
   ExternalLinkAltIcon,
@@ -216,7 +215,7 @@ export function GuideDetailPage() {
               </div>
             </DescriptionListDescription>
           </DescriptionListGroup>
-        )
+        )}
         <DescriptionListGroup>
           <DescriptionListTerm>Status</DescriptionListTerm>
           <DescriptionListDescription>

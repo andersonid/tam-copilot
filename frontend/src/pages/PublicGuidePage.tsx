@@ -109,7 +109,6 @@ export function PublicGuidePage() {
       <Modal
         variant={ModalVariant.small}
         isOpen
-        showClose={false}
         aria-label="Enter access token"
       >
         <ModalHeader title="Enter Access Token" />
