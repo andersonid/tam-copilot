@@ -39,6 +39,20 @@ async def lifespan(app: FastAPI):
                 "USING fts5(title, input_notes, content='guides', content_rowid='id')"
             )
         )
+        try:
+            await conn.execute(__import__("sqlalchemy").text(
+                "ALTER TABLE guides ADD COLUMN access_token VARCHAR(64) DEFAULT ''"
+            ))
+            import secrets
+            rows = (await conn.execute(__import__("sqlalchemy").text("SELECT id FROM guides WHERE access_token = ''"))).fetchall()
+            for row in rows:
+                await conn.execute(
+                    __import__("sqlalchemy").text("UPDATE guides SET access_token = :t WHERE id = :id"),
+                    {"t": secrets.token_urlsafe(24), "id": row[0]},
+                )
+            logger.info("startup.migration | added access_token column, backfilled %d rows", len(rows))
+        except Exception:
+            pass
     async with async_session() as db:
         await seed_data(db)
     logger.info("startup.complete | ready to serve")
