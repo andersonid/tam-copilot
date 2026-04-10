@@ -1,6 +1,11 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import api from "../services/api";
 
+const savedToken = localStorage.getItem("tam_token");
+if (savedToken) {
+  api.defaults.headers.common["Authorization"] = `Bearer ${savedToken}`;
+}
+
 interface AuthState {
   token: string | null;
   username: string | null;
@@ -18,7 +23,7 @@ const AuthContext = createContext<AuthState>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("tam_token"));
+  const [token, setToken] = useState<string | null>(savedToken);
   const [username, setUsername] = useState<string | null>(() => localStorage.getItem("tam_user"));
 
   useEffect(() => {

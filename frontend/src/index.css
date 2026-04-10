@@ -36,6 +36,7 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .rh-brand-logo img {
-  height: 32px;
+  height: 40px;
   width: auto;
+  object-fit: contain;
 }
