@@ -87,21 +87,36 @@ app.include_router(analytics.router, prefix="/api", dependencies=[Depends(get_cu
 from .database import get_db, async_session as _async_session  # noqa: E402 (re-import for routes below)
 from .models import Guide as _Guide  # noqa: E402
 from sqlalchemy import select as _select  # noqa: E402
+from pydantic import BaseModel as _BaseModel  # noqa: E402
 
 
-@app.get("/public/guides/{guide_id}")
-async def public_guide(guide_id: int, token: str = Query(...)):
-    """Serve a generated HTML guide to external users who have the access token."""
+class _TokenVerify(_BaseModel):
+    token: str
+
+
+@app.post("/api/public/guides/{guide_id}/verify")
+async def verify_public_guide(guide_id: int, body: _TokenVerify):
+    """Validate access token and return guide HTML content."""
     async with _async_session() as db:
         guide = await db.scalar(
-            _select(_Guide).where(_Guide.id == guide_id, _Guide.access_token == token)
+            _select(_Guide).where(_Guide.id == guide_id, _Guide.access_token == body.token)
         )
     if not guide or not guide.html_filename:
         raise HTTPException(403, "Invalid token or guide not found")
     html_path = Path(settings.data_dir) / "html" / guide.html_filename
     if not html_path.exists():
         raise HTTPException(404, "Guide file not found")
-    return HTMLResponse(html_path.read_text(encoding="utf-8"))
+    return {"title": guide.title, "html": html_path.read_text(encoding="utf-8")}
+
+
+@app.get("/api/public/guides/{guide_id}/info")
+async def public_guide_info(guide_id: int):
+    """Return minimal public metadata (title only) — no auth required."""
+    async with _async_session() as db:
+        guide = await db.scalar(_select(_Guide).where(_Guide.id == guide_id))
+    if not guide:
+        raise HTTPException(404, "Guide not found")
+    return {"id": guide.id, "title": guide.title}
 
 
 static_dir = Path(settings.static_dir)

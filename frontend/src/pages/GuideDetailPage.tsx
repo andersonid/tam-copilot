@@ -126,9 +126,7 @@ export function GuideDetailPage() {
     );
   }
 
-  const publicUrl = tokenInfo
-    ? `${window.location.origin}/public/guides/${guide.id}?token=${tokenInfo.access_token}`
-    : "";
+  const publicUrl = `${window.location.origin}/public/guides/${guide.id}`;
 
   return (
     <>
@@ -181,20 +179,30 @@ export function GuideDetailPage() {
       </Split>
 
       <DescriptionList style={{ marginTop: 24 }}>
+        <DescriptionListGroup>
+          <DescriptionListTerm>
+            <LinkIcon style={{ marginRight: 6 }} />
+            Public Share Link
+          </DescriptionListTerm>
+          <DescriptionListDescription>
+            <ClipboardCopy isReadOnly style={{ maxWidth: 500 }}>
+              {publicUrl}
+            </ClipboardCopy>
+            <p style={{ marginTop: 4, fontSize: 13, opacity: 0.7 }}>
+              Recipients will need the access token below to view this guide.
+            </p>
+          </DescriptionListDescription>
+        </DescriptionListGroup>
         {tokenInfo && (
           <DescriptionListGroup>
             <DescriptionListTerm>
-              <LinkIcon style={{ marginRight: 6 }} />
-              Public Share Link
+              <KeyIcon style={{ marginRight: 6 }} />
+              Access Token
             </DescriptionListTerm>
             <DescriptionListDescription>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <ClipboardCopy
-                  isReadOnly
-                  variant={ClipboardCopyVariant.expansion}
-                  style={{ flex: 1, minWidth: 300 }}
-                >
-                  {publicUrl}
+                <ClipboardCopy isReadOnly style={{ maxWidth: 400 }}>
+                  {tokenInfo.access_token}
                 </ClipboardCopy>
                 <Button
                   variant="secondary"
@@ -206,14 +214,9 @@ export function GuideDetailPage() {
                   Rotate Token
                 </Button>
               </div>
-              <div style={{ marginTop: 6 }}>
-                <Label color="blue" icon={<KeyIcon />}>
-                  Token: {tokenInfo.access_token}
-                </Label>
-              </div>
             </DescriptionListDescription>
           </DescriptionListGroup>
-        )}
+        )
         <DescriptionListGroup>
           <DescriptionListTerm>Status</DescriptionListTerm>
           <DescriptionListDescription>

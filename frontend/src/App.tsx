@@ -11,6 +11,7 @@ import { CustomersPage } from "./pages/CustomersPage";
 import { ProvidersPage } from "./pages/ProvidersPage";
 import { SearchPage } from "./pages/SearchPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { PublicGuidePage } from "./pages/PublicGuidePage";
 
 function AuthenticatedApp() {
   const { isAuthenticated } = useAuth();
@@ -40,7 +41,10 @@ export default function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <AuthenticatedApp />
+          <Routes>
+            <Route path="/public/guides/:id" element={<PublicGuidePage />} />
+            <Route path="/*" element={<AuthenticatedApp />} />
+          </Routes>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
