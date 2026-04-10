@@ -17,6 +17,7 @@ import {
   HelperTextItem,
 } from "@patternfly/react-core";
 import api from "../services/api";
+import { CreatableSelect } from "../components/CreatableSelect";
 import type { Customer, Product, DocumentType, LLMProvider, SimilarGuide } from "../types/models";
 
 const KCS_SUBTYPES = [
@@ -149,45 +150,45 @@ export function GuideCreatePage() {
 
       <Form isHorizontal>
         <FormGroup label="Customer" isRequired fieldId="customer">
-          <FormSelect
+          <CreatableSelect
             id="customer"
             value={customerId}
-            onChange={(_e, v) => setCustomerId(v)}
+            onChange={setCustomerId}
+            options={customers}
+            onCreated={(c) => setCustomers((prev) => [...prev, c as Customer])}
+            placeholder="Select customer..."
+            createLabel="Create new customer"
+            apiEndpoint="/customers"
             isRequired
-          >
-            <FormSelectOption value="" label="Select customer..." isPlaceholder />
-            {customers.map((c) => (
-              <FormSelectOption key={c.id} value={String(c.id)} label={c.name} />
-            ))}
-          </FormSelect>
+          />
         </FormGroup>
 
         <FormGroup label="Product" isRequired fieldId="product">
-          <FormSelect
+          <CreatableSelect
             id="product"
             value={productId}
-            onChange={(_e, v) => setProductId(v)}
+            onChange={setProductId}
+            options={products}
+            onCreated={(p) => setProducts((prev) => [...prev, p as Product])}
+            placeholder="Select product..."
+            createLabel="Create new product"
+            apiEndpoint="/products"
             isRequired
-          >
-            <FormSelectOption value="" label="Select product..." isPlaceholder />
-            {products.map((p) => (
-              <FormSelectOption key={p.id} value={String(p.id)} label={p.name} />
-            ))}
-          </FormSelect>
+          />
         </FormGroup>
 
         <FormGroup label="Document Type" isRequired fieldId="doctype">
-          <FormSelect
+          <CreatableSelect
             id="doctype"
             value={docTypeId}
-            onChange={(_e, v) => setDocTypeId(v)}
+            onChange={setDocTypeId}
+            options={docTypes}
+            onCreated={(d) => setDocTypes((prev) => [...prev, d as DocumentType])}
+            placeholder="Select type..."
+            createLabel="Create new document type"
+            apiEndpoint="/document-types"
             isRequired
-          >
-            <FormSelectOption value="" label="Select type..." isPlaceholder />
-            {docTypes.map((d) => (
-              <FormSelectOption key={d.id} value={String(d.id)} label={d.name} />
-            ))}
-          </FormSelect>
+          />
         </FormGroup>
 
         {isKcs && (
