@@ -5,9 +5,11 @@ import {
   ListVariant,
 } from "@patternfly/react-core";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 export function LoginPage() {
   const { login } = useAuth();
+  const { theme } = useTheme();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -26,10 +28,12 @@ export function LoginPage() {
     }
   };
 
+  const logoSrc = theme === "dark" ? "/logo-tam-dark.png" : "/logo-tam-light.png";
+
   return (
     <PFLoginPage
-      brandImgSrc=""
-      brandImgAlt=""
+      brandImgSrc={logoSrc}
+      brandImgAlt="TAM-Copilot"
       loginTitle="TAM-Copilot"
       loginSubtitle="Sign in to your admin account"
       textContent=""
