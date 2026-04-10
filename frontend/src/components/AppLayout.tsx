@@ -93,8 +93,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     ref={toggleRef}
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                     isExpanded={userMenuOpen}
-                    variant="plain"
-                    style={{ color: "var(--pf-t--global--text--color--on-brand--default)" }}
+                    variant="plainText"
                   >
                     {username}
                   </MenuToggle>
