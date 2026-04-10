@@ -85,7 +85,18 @@ export function PublicGuidePage() {
   }
 
   if (html) {
-    return <div dangerouslySetInnerHTML={{ __html: html }} />;
+    return (
+      <iframe
+        srcDoc={html}
+        title={guideTitle ?? "Guide"}
+        style={{
+          width: "100%",
+          height: "100vh",
+          border: "none",
+        }}
+        sandbox="allow-same-origin allow-popups"
+      />
+    );
   }
 
   return (

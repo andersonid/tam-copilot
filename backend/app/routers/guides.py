@@ -446,6 +446,20 @@ async def rotate_guide_token(guide_id: int, db: AsyncSession = Depends(get_db)):
     return {"access_token": guide.access_token, "public_url": f"/public/guides/{guide.id}"}
 
 
+@router.get("/guides/html/{filename}")
+async def serve_guide_html(filename: str):
+    """Serve a generated guide HTML file directly (admin-only, auth via router dependency)."""
+    from ..config import settings
+    from starlette.responses import HTMLResponse
+
+    if ".." in filename or "/" in filename:
+        raise HTTPException(400, "Invalid filename")
+    html_path = settings.html_dir / filename
+    if not html_path.exists():
+        raise HTTPException(404, "Guide file not found")
+    return HTMLResponse(html_path.read_text(encoding="utf-8"))
+
+
 @router.post("/guides/check-similar", response_model=CheckSimilarResponse)
 async def check_similar(data: CheckSimilarRequest, db: AsyncSession = Depends(get_db)):
     t0 = time.perf_counter()

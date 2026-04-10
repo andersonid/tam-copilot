@@ -151,7 +151,7 @@ export function GuideDetailPage() {
               variant="secondary"
               icon={<ExternalLinkAltIcon />}
               component="a"
-              href={`/guides/html/${guide.html_filename}`}
+              href={`/api/guides/html/${guide.html_filename}`}
               target="_blank"
             >
               View HTML
