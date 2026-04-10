@@ -48,8 +48,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <MastheadMain>
         <MastheadBrand>
           <a href="/" className="rh-brand-logo" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
-            <span className="rh-wordmark">RED HAT</span>
-            <span>TAM-Copilot</span>
+            <img src="/logo-tam.png" alt="Red Hat Technical Account Management" />
           </a>
         </MastheadBrand>
       </MastheadMain>
@@ -66,10 +65,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
               />
             </ToolbarItem>
             <ToolbarItem align={{ default: "alignEnd" }}>
-              <span style={{ marginRight: 12, color: "var(--pf-t--global--text--color--subtle)" }}>
+              <span style={{ marginRight: 12, color: "#d2d2d2" }}>
                 {username}
               </span>
-              <Button variant="plain" onClick={logout}>
+              <Button variant="plain" onClick={logout} style={{ color: "#d2d2d2" }}>
                 Sign out
               </Button>
             </ToolbarItem>

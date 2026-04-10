@@ -22,28 +22,20 @@ h1, h2, h3, h4, h5, h6,
   font-family: "Red Hat Display", "RedHatDisplay", var(--pf-t--global--font--family--heading), sans-serif;
 }
 
-.pf-v5-c-page__header {
-  --pf-v5-c-page__header--BackgroundColor: var(--rh-black);
+.pf-v5-c-page__header,
+.pf-v6-c-masthead {
+  --pf-v5-c-page__header--BackgroundColor: #2d2d2d;
+  --pf-v6-c-masthead--BackgroundColor: #2d2d2d;
+  background-color: #2d2d2d;
 }
 
 .rh-brand-logo {
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: var(--rh-white);
-  font-family: "Red Hat Display", sans-serif;
-  font-weight: 700;
-  font-size: 1.1rem;
   text-decoration: none;
 }
 
-.rh-brand-logo .rh-hat {
-  width: 36px;
-  height: 36px;
-}
-
-.rh-brand-logo .rh-wordmark {
-  color: var(--rh-red);
-  font-weight: 900;
-  letter-spacing: 0.03em;
+.rh-brand-logo img {
+  height: 32px;
+  width: auto;
 }
