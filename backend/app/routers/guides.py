@@ -340,6 +340,26 @@ async def regenerate_guide(guide_id: int, provider_id: int | None = None, db: As
     return guide
 
 
+@router.get("/guides/{guide_id}/token")
+async def get_guide_token(guide_id: int, db: AsyncSession = Depends(get_db)):
+    guide = await db.get(Guide, guide_id)
+    if not guide:
+        raise HTTPException(404, "Guide not found")
+    return {"access_token": guide.access_token, "public_url": f"/public/guides/{guide.id}?token={guide.access_token}"}
+
+
+@router.post("/guides/{guide_id}/rotate-token")
+async def rotate_guide_token(guide_id: int, db: AsyncSession = Depends(get_db)):
+    guide = await db.get(Guide, guide_id)
+    if not guide:
+        raise HTTPException(404, "Guide not found")
+    import secrets
+    guide.access_token = secrets.token_urlsafe(24)
+    await db.commit()
+    logger.info("guide.token.rotated | guide_id=%d", guide_id)
+    return {"access_token": guide.access_token, "public_url": f"/public/guides/{guide.id}?token={guide.access_token}"}
+
+
 @router.post("/guides/check-similar", response_model=CheckSimilarResponse)
 async def check_similar(data: CheckSimilarRequest, db: AsyncSession = Depends(get_db)):
     t0 = time.perf_counter()

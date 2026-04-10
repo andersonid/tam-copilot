@@ -46,6 +46,7 @@ export interface Guide {
   html_filename: string | null;
   status: string;
   kcs_subtype: string | null;
+  access_token: string | null;
   created_at: string;
   updated_at: string;
   customer?: Customer;

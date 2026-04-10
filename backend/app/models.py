@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, date
 from sqlalchemy import (
     Column, Integer, String, Text, Date, DateTime, Boolean, LargeBinary,
@@ -5,6 +6,20 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from .database import Base
+
+
+def _generate_token() -> str:
+    return secrets.token_urlsafe(24)
+
+
+class AdminUser(Base):
+    __tablename__ = "admin_users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(100), nullable=False, unique=True)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 guide_tags = Table(
     "guide_tags",
@@ -88,6 +103,7 @@ class Guide(Base):
     html_filename = Column(String(500), nullable=True)
     status = Column(String(50), nullable=False, default="draft")
     kcs_subtype = Column(String(50), nullable=True)  # solution, howto, qa, troubleshooting, faq, hub
+    access_token = Column(String(64), nullable=False, default=_generate_token, index=True)
     embedding = Column(LargeBinary, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

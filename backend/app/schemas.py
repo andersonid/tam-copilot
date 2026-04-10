@@ -96,6 +96,7 @@ class GuideRead(BaseModel):
     html_filename: str | None
     status: str
     kcs_subtype: str | None
+    access_token: str | None = None
     created_at: datetime
     updated_at: datetime
     customer: CustomerRead | None = None

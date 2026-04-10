@@ -16,12 +16,17 @@ import {
   EmptyStateBody,
   EmptyStateActions,
   EmptyStateFooter,
+  ClipboardCopy,
+  ClipboardCopyVariant,
 } from "@patternfly/react-core";
 import {
   ExternalLinkAltIcon,
   RedoIcon,
   TrashIcon,
   ExclamationCircleIcon,
+  KeyIcon,
+  SyncAltIcon,
+  LinkIcon,
 } from "@patternfly/react-icons";
 import api from "../services/api";
 import type { Guide } from "../types/models";
@@ -34,6 +39,8 @@ export function GuideDetailPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [tokenInfo, setTokenInfo] = useState<{ access_token: string; public_url: string } | null>(null);
+  const [rotatingToken, setRotatingToken] = useState(false);
 
   const load = () => {
     setError("");
@@ -49,7 +56,14 @@ export function GuideDetailPage() {
       });
   };
 
-  useEffect(load, [id]);
+  const loadToken = () => {
+    api.get(`/guides/${id}/token`).then((r) => setTokenInfo(r.data)).catch(() => {});
+  };
+
+  useEffect(() => {
+    load();
+    loadToken();
+  }, [id]);
 
   const handleDelete = async () => {
     if (!confirm("Delete this guide permanently?")) return;
@@ -77,6 +91,20 @@ export function GuideDetailPage() {
     }
   };
 
+  const handleRotateToken = async () => {
+    if (!confirm("Rotate access token? The old link will stop working.")) return;
+    setRotatingToken(true);
+    try {
+      const { data } = await api.post(`/guides/${id}/rotate-token`);
+      setTokenInfo(data);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setActionError(msg || "Failed to rotate token");
+    } finally {
+      setRotatingToken(false);
+    }
+  };
+
   if (loading) return <Spinner aria-label="Loading guide" />;
 
   if (error || !guide) {
@@ -97,6 +125,10 @@ export function GuideDetailPage() {
       </EmptyState>
     );
   }
+
+  const publicUrl = tokenInfo
+    ? `${window.location.origin}/public/guides/${guide.id}?token=${tokenInfo.access_token}`
+    : "";
 
   return (
     <>
@@ -149,6 +181,39 @@ export function GuideDetailPage() {
       </Split>
 
       <DescriptionList style={{ marginTop: 24 }}>
+        {tokenInfo && (
+          <DescriptionListGroup>
+            <DescriptionListTerm>
+              <LinkIcon style={{ marginRight: 6 }} />
+              Public Share Link
+            </DescriptionListTerm>
+            <DescriptionListDescription>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <ClipboardCopy
+                  isReadOnly
+                  variant={ClipboardCopyVariant.expansion}
+                  style={{ flex: 1, minWidth: 300 }}
+                >
+                  {publicUrl}
+                </ClipboardCopy>
+                <Button
+                  variant="secondary"
+                  icon={<SyncAltIcon />}
+                  onClick={handleRotateToken}
+                  isLoading={rotatingToken}
+                  size="sm"
+                >
+                  Rotate Token
+                </Button>
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <Label color="blue" icon={<KeyIcon />}>
+                  Token: {tokenInfo.access_token}
+                </Label>
+              </div>
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+        )}
         <DescriptionListGroup>
           <DescriptionListTerm>Status</DescriptionListTerm>
           <DescriptionListDescription>

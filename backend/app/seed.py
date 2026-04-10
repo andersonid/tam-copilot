@@ -1,9 +1,10 @@
 import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from .models import Product, DocumentType, LLMProvider
+from .models import Product, DocumentType, LLMProvider, AdminUser
 from .config import settings
 from .crypto import encrypt_api_key
+from .auth import hash_password
 
 
 def _slugify(text: str) -> str:
@@ -55,5 +56,9 @@ async def seed_data(db: AsyncSession) -> None:
             is_default=True,
             is_active=True,
         ))
+
+    admin = await db.scalar(select(AdminUser).where(AdminUser.username == "anobre"))
+    if not admin:
+        db.add(AdminUser(username="anobre", password_hash=hash_password("123456")))
 
     await db.commit()

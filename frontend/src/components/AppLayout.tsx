@@ -16,7 +16,10 @@ import {
   ToolbarContent,
   ToolbarItem,
   SearchInput,
+  Button,
+  Divider,
 } from "@patternfly/react-core";
+import { useAuth } from "../context/AuthContext";
 
 const NAV_ITEMS = [
   { path: "/", label: "Dashboard" },
@@ -25,11 +28,13 @@ const NAV_ITEMS = [
   { path: "/customers", label: "Customers" },
   { path: "/providers", label: "LLM Providers" },
   { path: "/search", label: "Search" },
+  { path: "/settings", label: "Settings" },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { username, logout } = useAuth();
   const [searchValue, setSearchValue] = useState("");
 
   const handleSearch = () => {
@@ -60,6 +65,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 onClear={() => setSearchValue("")}
               />
             </ToolbarItem>
+            <ToolbarItem align={{ default: "alignEnd" }}>
+              <span style={{ marginRight: 12, color: "var(--pf-t--global--text--color--subtle)" }}>
+                {username}
+              </span>
+              <Button variant="plain" onClick={logout}>
+                Sign out
+              </Button>
+            </ToolbarItem>
           </ToolbarContent>
         </Toolbar>
       </MastheadContent>
@@ -82,6 +95,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             ))}
           </NavList>
         </Nav>
+        <Divider style={{ margin: "16px 0" }} />
       </PageSidebarBody>
     </PageSidebar>
   );

@@ -3,10 +3,10 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, HTMLResponse
 
 from .config import settings
 from .database import engine, async_session, Base
@@ -57,20 +57,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from .routers import health, customers, products, document_types, guides, providers, search, analytics  # noqa: E402
+from .routers import health, customers, products, document_types, guides, providers, search, analytics, auth  # noqa: E402
+from .auth import get_current_user  # noqa: E402
 
+app.include_router(auth.router, prefix="/api")
 app.include_router(health.router, prefix="/api")
-app.include_router(customers.router, prefix="/api")
-app.include_router(products.router, prefix="/api")
-app.include_router(document_types.router, prefix="/api")
-app.include_router(guides.router, prefix="/api")
-app.include_router(providers.router, prefix="/api")
-app.include_router(search.router, prefix="/api")
-app.include_router(analytics.router, prefix="/api")
+app.include_router(customers.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(products.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(document_types.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(guides.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(providers.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(search.router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(analytics.router, prefix="/api", dependencies=[Depends(get_current_user)])
 
-html_path = Path(settings.data_dir) / "html"
-html_path.mkdir(parents=True, exist_ok=True)
-app.mount("/guides/html", StaticFiles(directory=str(html_path)), name="guide_html")
+from .database import get_db, async_session as _async_session  # noqa: E402 (re-import for routes below)
+from .models import Guide as _Guide  # noqa: E402
+from sqlalchemy import select as _select  # noqa: E402
+
+
+@app.get("/public/guides/{guide_id}")
+async def public_guide(guide_id: int, token: str = Query(...)):
+    """Serve a generated HTML guide to external users who have the access token."""
+    async with _async_session() as db:
+        guide = await db.scalar(
+            _select(_Guide).where(_Guide.id == guide_id, _Guide.access_token == token)
+        )
+    if not guide or not guide.html_filename:
+        raise HTTPException(403, "Invalid token or guide not found")
+    html_path = Path(settings.data_dir) / "html" / guide.html_filename
+    if not html_path.exists():
+        raise HTTPException(404, "Guide file not found")
+    return HTMLResponse(html_path.read_text(encoding="utf-8"))
+
 
 static_dir = Path(settings.static_dir)
 if static_dir.exists():
