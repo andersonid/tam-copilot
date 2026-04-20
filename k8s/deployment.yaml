@@ -6,6 +6,7 @@ metadata:
   labels:
     app: tam-copilot
 spec:
+  progressDeadlineSeconds: 600
   replicas: 1
   revisionHistoryLimit: 3
   strategy:
@@ -21,6 +22,7 @@ spec:
       containers:
         - name: tam-copilot
           image: registry.registry.svc.cluster.local:5000/nobre-ninja/tam-copilot:latest
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8000
@@ -39,17 +41,25 @@ spec:
               cpu: "1"
               memory: 1Gi
           readinessProbe:
+            failureThreshold: 3
             httpGet:
               path: /api/health
               port: http
+              scheme: HTTP
             initialDelaySeconds: 10
             periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           livenessProbe:
+            failureThreshold: 3
             httpGet:
               path: /api/health
               port: http
+              scheme: HTTP
             initialDelaySeconds: 15
             periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 1
       volumes:
         - name: data
           persistentVolumeClaim:
