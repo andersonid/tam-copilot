@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: tam-copilot
-          image: registry.registry.svc.cluster.local:5000/nobre-ninja/tam-copilot
+          image: registry.registry.svc.cluster.local:5000/nobre-ninja/tam-copilot:latest
           ports:
             - name: http
               containerPort: 8000
