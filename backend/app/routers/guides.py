@@ -75,57 +75,39 @@ async def create_guide(data: GuideCreate, db: AsyncSession = Depends(get_db)):
         logger.error("guide.create.fail | reason=no_provider_available")
         raise HTTPException(400, "No LLM provider available")
 
+    model = data.model_override or provider.default_model
     logger.info(
         "guide.create.provider | name=%s type=%s model=%s base_url=%s",
-        provider.name, provider.provider_type, data.model_override or provider.default_model, provider.base_url,
+        provider.name, provider.provider_type, model, provider.base_url,
     )
 
-    title = data.title or "Generating..."
-    guide = Guide(
-        title=title,
-        customer_id=data.customer_id,
-        product_id=data.product_id,
-        document_type_id=data.document_type_id,
-        provider_id=provider.id,
-        model_used=data.model_override or provider.default_model,
-        touchpoint_date=data.touchpoint_date,
-        input_notes=data.input_notes,
-        status="generating",
+    from ..services.llm_base import get_llm_client
+    from ..services.renderer import render_guide
+    from ..services.prompts import build_prompt
+    from ..services.embeddings import get_embedding
+    from ..config import settings
+
+    api_key = decrypt_api_key(provider.api_key_encrypted) if provider.api_key_encrypted else None
+    client = get_llm_client(provider.provider_type, provider.base_url, api_key)
+
+    doc_type = await db.get(DocumentType, data.document_type_id)
+    product = await db.get(Product, data.product_id)
+    customer = await db.get(Customer, data.customer_id)
+
+    slug = doc_type.slug if doc_type else "rca"
+    system_prompt, user_msg = build_prompt(
+        doc_type_slug=slug,
+        product_name=product.name if product else "",
+        customer_name=customer.name if customer else "",
         kcs_subtype=data.kcs_subtype,
     )
-    if data.tags:
-        guide.tags = await _get_or_create_tags(db, data.tags)
-    db.add(guide)
-    await db.flush()
-    logger.info("guide.create.record | guide_id=%d title=%r status=generating", guide.id, title)
+    logger.info(
+        "guide.create.prompt | doc_type=%s kcs_subtype=%s system_prompt_len=%d user_msg_len=%d",
+        slug, data.kcs_subtype, len(system_prompt), len(user_msg) + len(data.input_notes),
+    )
 
+    # --- LLM call (fail fast — nothing saved yet) ---
     try:
-        from ..services.llm_base import get_llm_client
-        from ..services.renderer import render_guide
-        from ..services.prompts import build_prompt
-        from ..services.embeddings import get_embedding
-        from ..config import settings
-
-        api_key = decrypt_api_key(provider.api_key_encrypted) if provider.api_key_encrypted else None
-        client = get_llm_client(provider.provider_type, provider.base_url, api_key)
-
-        doc_type = await db.get(DocumentType, data.document_type_id)
-        product = await db.get(Product, data.product_id)
-        customer = await db.get(Customer, data.customer_id)
-
-        slug = doc_type.slug if doc_type else "rca"
-        system_prompt, user_msg = build_prompt(
-            doc_type_slug=slug,
-            product_name=product.name if product else "",
-            customer_name=customer.name if customer else "",
-            kcs_subtype=data.kcs_subtype,
-        )
-        logger.info(
-            "guide.create.prompt | doc_type=%s kcs_subtype=%s system_prompt_len=%d user_msg_len=%d",
-            slug, data.kcs_subtype, len(system_prompt), len(user_msg) + len(data.input_notes),
-        )
-
-        model = data.model_override or provider.default_model
         t_llm = time.perf_counter()
         structured = await client.generate_structured(system_prompt, user_msg + "\n\n" + data.input_notes, model)
         llm_elapsed = time.perf_counter() - t_llm
@@ -134,48 +116,74 @@ async def create_guide(data: GuideCreate, db: AsyncSession = Depends(get_db)):
             "guide.create.llm_done | model=%s elapsed=%.2fs sections=%d keys=%s",
             model, llm_elapsed, section_count, list(structured.keys()),
         )
+    except Exception as llm_err:
+        elapsed = time.perf_counter() - t_total
+        err_type = type(llm_err).__name__
+        err_msg = str(llm_err)[:500]
+        logger.error("guide.create.llm_failed | model=%s elapsed=%.2fs error_type=%s error=%s",
+                      model, elapsed, err_type, err_msg, exc_info=True)
+        raise HTTPException(502, detail={
+            "summary": f"LLM generation failed ({err_type})",
+            "error_type": err_type,
+            "message": err_msg,
+            "provider": provider.name,
+            "model": model,
+            "elapsed_seconds": round(elapsed, 1),
+            "hint": _error_hint(llm_err),
+        })
 
-        if not data.title and structured.get("title"):
-            guide.title = structured["title"]
+    # --- LLM succeeded — persist the guide ---
+    title = data.title or structured.get("title") or "Untitled Guide"
+    guide = Guide(
+        title=title,
+        customer_id=data.customer_id,
+        product_id=data.product_id,
+        document_type_id=data.document_type_id,
+        provider_id=provider.id,
+        model_used=model,
+        touchpoint_date=data.touchpoint_date,
+        input_notes=data.input_notes,
+        status="generated",
+        kcs_subtype=data.kcs_subtype,
+    )
+    if data.tags:
+        guide.tags = await _get_or_create_tags(db, data.tags)
+    db.add(guide)
+    await db.flush()
+    logger.info("guide.create.record | guide_id=%d title=%r", guide.id, title)
 
-        t_render = time.perf_counter()
-        html_content = render_guide(structured, slug, data.kcs_subtype)
-        render_elapsed = time.perf_counter() - t_render
-        filename = f"guide_{guide.id}.html"
-        html_path = settings.html_dir / filename
-        html_path.write_text(html_content, encoding="utf-8")
-        guide.html_filename = filename
-        guide.status = "generated"
-        logger.info(
-            "guide.create.rendered | filename=%s html_size=%d elapsed=%.3fs",
-            filename, len(html_content), render_elapsed,
-        )
+    t_render = time.perf_counter()
+    html_content = render_guide(structured, slug, data.kcs_subtype)
+    render_elapsed = time.perf_counter() - t_render
+    filename = f"guide_{guide.id}.html"
+    html_path = settings.html_dir / filename
+    html_path.write_text(html_content, encoding="utf-8")
+    guide.html_filename = filename
+    logger.info(
+        "guide.create.rendered | filename=%s html_size=%d elapsed=%.3fs",
+        filename, len(html_content), render_elapsed,
+    )
 
-        t_emb = time.perf_counter()
-        try:
-            emb = await get_embedding(data.input_notes)
-            emb_elapsed = time.perf_counter() - t_emb
-            if emb is not None:
-                import numpy as np
-                guide.embedding = np.array(emb, dtype=np.float32).tobytes()
-                logger.info("guide.create.embedding | dims=%d elapsed=%.2fs", len(emb), emb_elapsed)
-            else:
-                logger.warning("guide.create.embedding | result=null elapsed=%.2fs", emb_elapsed)
-        except Exception as emb_err:
-            logger.warning("guide.create.embedding | error=%s elapsed=%.2fs", emb_err, time.perf_counter() - t_emb)
+    t_emb = time.perf_counter()
+    try:
+        emb = await get_embedding(data.input_notes)
+        emb_elapsed = time.perf_counter() - t_emb
+        if emb is not None:
+            import numpy as np
+            guide.embedding = np.array(emb, dtype=np.float32).tobytes()
+            logger.info("guide.create.embedding | dims=%d elapsed=%.2fs", len(emb), emb_elapsed)
+        else:
+            logger.warning("guide.create.embedding | result=null elapsed=%.2fs", emb_elapsed)
+    except Exception as emb_err:
+        logger.warning("guide.create.embedding | error=%s elapsed=%.2fs", emb_err, time.perf_counter() - t_emb)
 
-        try:
-            await db.execute(text(
-                "INSERT INTO guide_fts(rowid, title, input_notes) VALUES (:id, :title, :notes)"
-            ), {"id": guide.id, "title": guide.title, "notes": data.input_notes})
-            logger.info("guide.create.fts_indexed | guide_id=%d", guide.id)
-        except Exception as fts_err:
-            logger.warning("guide.create.fts_index_fail | error=%s", fts_err)
-
-    except Exception as e:
-        guide.status = "error"
-        guide.title = data.title or f"Error: {str(e)[:100]}"
-        logger.error("guide.create.pipeline_error | error=%s", e, exc_info=True)
+    try:
+        await db.execute(text(
+            "INSERT INTO guide_fts(rowid, title, input_notes) VALUES (:id, :title, :notes)"
+        ), {"id": guide.id, "title": guide.title, "notes": data.input_notes})
+        logger.info("guide.create.fts_indexed | guide_id=%d", guide.id)
+    except Exception as fts_err:
+        logger.warning("guide.create.fts_index_fail | error=%s", fts_err)
 
     await db.commit()
 
@@ -195,6 +203,22 @@ async def create_guide(data: GuideCreate, db: AsyncSession = Depends(get_db)):
         ).where(Guide.id == guide.id)
     )
     return result.scalar_one()
+
+
+def _error_hint(err: Exception) -> str:
+    """Return a user-friendly troubleshooting hint based on the error type."""
+    msg = str(err).lower()
+    if "connection" in msg or "disconnected" in msg:
+        return "The LLM provider closed the connection. This usually means the model is too slow or the provider has a server-side timeout. Try a different/faster model, or check VPN connectivity."
+    if "timeout" in msg:
+        return "Request timed out waiting for the LLM response. The model may be overloaded. Try again later or use a faster model."
+    if "401" in msg or "unauthorized" in msg or "invalid api key" in msg:
+        return "Authentication failed. Check the API key configured for this provider in Administration > LLM Providers."
+    if "429" in msg or "rate limit" in msg:
+        return "Rate limit exceeded. Wait a moment and try again."
+    if "json" in msg or "parse" in msg:
+        return "The LLM returned invalid JSON. Try regenerating — this can be intermittent."
+    return "Check the backend logs for full details. If the error persists, try a different LLM provider or model."
 
 
 @router.post("/guides/import", response_model=GuideRead, status_code=201)
@@ -300,6 +324,32 @@ async def get_guide(guide_id: int, db: AsyncSession = Depends(get_db)):
     return guide
 
 
+@router.delete("/guides/errors", status_code=200)
+async def purge_error_guides(db: AsyncSession = Depends(get_db)):
+    """Delete all guides with status='error' or 'generating' (stale)."""
+    result = await db.execute(
+        select(Guide).where(Guide.status.in_(["error", "generating"]))
+    )
+    guides = result.scalars().all()
+    count = len(guides)
+    if count == 0:
+        return {"deleted": 0}
+    from ..config import settings
+    for g in guides:
+        if g.html_filename:
+            html_path = settings.html_dir / g.html_filename
+            if html_path.exists():
+                html_path.unlink()
+        try:
+            await db.execute(text("DELETE FROM guide_fts WHERE rowid = :id"), {"id": g.id})
+        except Exception:
+            pass
+        await db.delete(g)
+    await db.commit()
+    logger.info("guide.purge_errors | deleted=%d", count)
+    return {"deleted": count}
+
+
 @router.delete("/guides/{guide_id}", status_code=204)
 async def delete_guide(guide_id: int, db: AsyncSession = Depends(get_db)):
     guide = await db.get(Guide, guide_id)
@@ -355,26 +405,28 @@ async def regenerate_guide(guide_id: int, provider_id: int | None = None, db: As
         logger.error("guide.regenerate.fail | guide_id=%d reason=no_provider_available", guide_id)
         raise HTTPException(400, "No LLM provider available")
 
-    logger.info("guide.regenerate.provider | name=%s model=%s", provider.name, provider.default_model)
+    model = provider.default_model
+    logger.info("guide.regenerate.provider | name=%s model=%s", provider.name, model)
 
+    from ..services.llm_base import get_llm_client
+    from ..services.renderer import render_guide
+    from ..services.prompts import build_prompt
+    from ..services.embeddings import get_embedding
+    from ..config import settings
+
+    api_key = decrypt_api_key(provider.api_key_encrypted) if provider.api_key_encrypted else None
+    client = get_llm_client(provider.provider_type, provider.base_url, api_key)
+
+    slug = guide.document_type.slug if guide.document_type else "rca"
+    system_prompt, user_msg = build_prompt(
+        doc_type_slug=slug,
+        product_name=guide.product.name if guide.product else "",
+        customer_name=guide.customer.name if guide.customer else "",
+        kcs_subtype=guide.kcs_subtype,
+    )
+
+    # --- LLM call (fail loud — don't corrupt the existing guide) ---
     try:
-        from ..services.llm_base import get_llm_client
-        from ..services.renderer import render_guide
-        from ..services.prompts import build_prompt
-        from ..services.embeddings import get_embedding
-        from ..config import settings
-
-        api_key = decrypt_api_key(provider.api_key_encrypted) if provider.api_key_encrypted else None
-        client = get_llm_client(provider.provider_type, provider.base_url, api_key)
-
-        slug = guide.document_type.slug if guide.document_type else "rca"
-        system_prompt, user_msg = build_prompt(
-            doc_type_slug=slug,
-            product_name=guide.product.name if guide.product else "",
-            customer_name=guide.customer.name if guide.customer else "",
-            kcs_subtype=guide.kcs_subtype,
-        )
-        model = provider.default_model
         t_llm = time.perf_counter()
         structured = await client.generate_structured(system_prompt, user_msg + "\n\n" + guide.input_notes, model)
         llm_elapsed = time.perf_counter() - t_llm
@@ -382,38 +434,50 @@ async def regenerate_guide(guide_id: int, provider_id: int | None = None, db: As
             "guide.regenerate.llm_done | model=%s elapsed=%.2fs sections=%d",
             model, llm_elapsed, len(structured.get("sections", [])),
         )
+    except Exception as llm_err:
+        elapsed = time.perf_counter() - t_total
+        err_type = type(llm_err).__name__
+        err_msg = str(llm_err)[:500]
+        logger.error("guide.regenerate.llm_failed | guide_id=%d model=%s elapsed=%.2fs error=%s",
+                      guide_id, model, elapsed, err_msg, exc_info=True)
+        raise HTTPException(502, detail={
+            "summary": f"LLM regeneration failed ({err_type})",
+            "error_type": err_type,
+            "message": err_msg,
+            "provider": provider.name,
+            "model": model,
+            "elapsed_seconds": round(elapsed, 1),
+            "hint": _error_hint(llm_err),
+        })
 
-        if structured.get("title"):
-            guide.title = structured["title"]
+    # --- LLM succeeded — update the guide ---
+    if structured.get("title"):
+        guide.title = structured["title"]
 
-        t_render = time.perf_counter()
-        html_content = render_guide(structured, slug, guide.kcs_subtype)
-        render_elapsed = time.perf_counter() - t_render
-        filename = f"guide_{guide.id}.html"
-        html_path = settings.html_dir / filename
-        html_path.write_text(html_content, encoding="utf-8")
-        guide.html_filename = filename
-        guide.provider_id = provider.id
-        guide.model_used = model
-        guide.status = "generated"
-        logger.info("guide.regenerate.rendered | html_size=%d elapsed=%.3fs", len(html_content), render_elapsed)
+    t_render = time.perf_counter()
+    html_content = render_guide(structured, slug, guide.kcs_subtype)
+    render_elapsed = time.perf_counter() - t_render
+    filename = f"guide_{guide.id}.html"
+    html_path = settings.html_dir / filename
+    html_path.write_text(html_content, encoding="utf-8")
+    guide.html_filename = filename
+    guide.provider_id = provider.id
+    guide.model_used = model
+    guide.status = "generated"
+    logger.info("guide.regenerate.rendered | html_size=%d elapsed=%.3fs", len(html_content), render_elapsed)
 
-        t_emb = time.perf_counter()
-        try:
-            emb = await get_embedding(guide.input_notes)
-            emb_elapsed = time.perf_counter() - t_emb
-            if emb is not None:
-                import numpy as np
-                guide.embedding = np.array(emb, dtype=np.float32).tobytes()
-                logger.info("guide.regenerate.embedding | dims=%d elapsed=%.2fs", len(emb), emb_elapsed)
-            else:
-                logger.warning("guide.regenerate.embedding | result=null elapsed=%.2fs", emb_elapsed)
-        except Exception as emb_err:
-            logger.warning("guide.regenerate.embedding | error=%s", emb_err)
-
-    except Exception as e:
-        guide.status = "error"
-        logger.error("guide.regenerate.pipeline_error | guide_id=%d error=%s", guide_id, e, exc_info=True)
+    t_emb = time.perf_counter()
+    try:
+        emb = await get_embedding(guide.input_notes)
+        emb_elapsed = time.perf_counter() - t_emb
+        if emb is not None:
+            import numpy as np
+            guide.embedding = np.array(emb, dtype=np.float32).tobytes()
+            logger.info("guide.regenerate.embedding | dims=%d elapsed=%.2fs", len(emb), emb_elapsed)
+        else:
+            logger.warning("guide.regenerate.embedding | result=null elapsed=%.2fs", emb_elapsed)
+    except Exception as emb_err:
+        logger.warning("guide.regenerate.embedding | error=%s", emb_err)
 
     await db.commit()
     await db.refresh(guide)

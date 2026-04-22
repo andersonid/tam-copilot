@@ -17,18 +17,37 @@ import {
   EmptyStateActions,
   EmptyStateFooter,
   ClipboardCopy,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  CodeBlock,
+  CodeBlockCode,
+  Icon,
 } from "@patternfly/react-core";
 import {
   ExternalLinkAltIcon,
   RedoIcon,
   TrashIcon,
   ExclamationCircleIcon,
+  ExclamationTriangleIcon,
   KeyIcon,
   SyncAltIcon,
   LinkIcon,
 } from "@patternfly/react-icons";
 import api from "../services/api";
 import type { Guide } from "../types/models";
+
+interface LlmErrorDetail {
+  summary: string;
+  error_type: string;
+  message: string;
+  provider: string;
+  model: string;
+  elapsed_seconds: number;
+  hint: string;
+}
 
 export function GuideDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +57,7 @@ export function GuideDetailPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [llmError, setLlmError] = useState<LlmErrorDetail | null>(null);
   const [tokenInfo, setTokenInfo] = useState<{ access_token: string; public_url: string } | null>(null);
   const [rotatingToken, setRotatingToken] = useState(false);
 
@@ -79,12 +99,18 @@ export function GuideDetailPage() {
   const handleRegenerate = async () => {
     setRegenerating(true);
     setActionError("");
+    setLlmError(null);
     try {
       const { data } = await api.post(`/guides/${id}/regenerate`);
       setGuide(data);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setActionError(msg || "Regeneration failed");
+      const resp = (err as { response?: { status?: number; data?: { detail?: LlmErrorDetail | string } } })?.response;
+      if (resp?.status === 502 && resp?.data?.detail && typeof resp.data.detail === "object") {
+        setLlmError(resp.data.detail as LlmErrorDetail);
+      } else {
+        const msg = typeof resp?.data?.detail === "string" ? resp.data.detail : "Regeneration failed";
+        setActionError(msg);
+      }
     } finally {
       setRegenerating(false);
     }
@@ -290,6 +316,60 @@ export function GuideDetailPage() {
           </DescriptionListDescription>
         </DescriptionListGroup>
       </DescriptionList>
+
+      {llmError && (
+        <Modal
+          variant={ModalVariant.medium}
+          isOpen
+          onClose={() => setLlmError(null)}
+        >
+          <ModalHeader
+            title={llmError.summary}
+            titleIconVariant={() => (
+              <Icon status="danger">
+                <ExclamationTriangleIcon />
+              </Icon>
+            )}
+          />
+          <ModalBody>
+            <Alert variant="warning" title="Troubleshooting Hint" isInline style={{ marginBottom: 16 }}>
+              {llmError.hint}
+            </Alert>
+            <DescriptionList isHorizontal>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Provider</DescriptionListTerm>
+                <DescriptionListDescription>{llmError.provider}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Model</DescriptionListTerm>
+                <DescriptionListDescription><code>{llmError.model}</code></DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Error Type</DescriptionListTerm>
+                <DescriptionListDescription><code>{llmError.error_type}</code></DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Elapsed</DescriptionListTerm>
+                <DescriptionListDescription>{llmError.elapsed_seconds}s</DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+            <Title headingLevel="h4" size="md" style={{ marginTop: 16, marginBottom: 8 }}>
+              Error Details
+            </Title>
+            <CodeBlock>
+              <CodeBlockCode>{llmError.message}</CodeBlockCode>
+            </CodeBlock>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="primary" onClick={() => setLlmError(null)}>
+              Close
+            </Button>
+            <Button variant="secondary" onClick={() => { setLlmError(null); handleRegenerate(); }}>
+              Retry
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
     </>
   );
 }

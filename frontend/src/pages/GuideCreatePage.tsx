@@ -15,10 +15,33 @@ import {
   DatePicker,
   HelperText,
   HelperTextItem,
+  Modal,
+  ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  DescriptionList,
+  DescriptionListGroup,
+  DescriptionListTerm,
+  DescriptionListDescription,
+  CodeBlock,
+  CodeBlockCode,
+  Icon,
 } from "@patternfly/react-core";
+import { ExclamationTriangleIcon } from "@patternfly/react-icons";
 import api from "../services/api";
 import { CreatableSelect } from "../components/CreatableSelect";
 import type { Customer, Product, DocumentType, LLMProvider, SimilarGuide } from "../types/models";
+
+interface LlmErrorDetail {
+  summary: string;
+  error_type: string;
+  message: string;
+  provider: string;
+  model: string;
+  elapsed_seconds: number;
+  hint: string;
+}
 
 const KCS_SUBTYPES = [
   { value: "solution", label: "Solution" },
@@ -46,6 +69,7 @@ export function GuideCreatePage() {
   const [similar, setSimilar] = useState<SimilarGuide[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [llmError, setLlmError] = useState<LlmErrorDetail | null>(null);
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -91,6 +115,7 @@ export function GuideCreatePage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     setError("");
+    setLlmError(null);
     try {
       const payload = {
         customer_id: Number(customerId),
@@ -108,9 +133,13 @@ export function GuideCreatePage() {
       const { data } = await api.post("/guides", payload);
       navigate(`/guides/${data.id}`);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data
-        ?.detail;
-      setError(msg || "Failed to create guide");
+      const resp = (err as { response?: { status?: number; data?: { detail?: LlmErrorDetail | string } } })?.response;
+      if (resp?.status === 502 && resp?.data?.detail && typeof resp.data.detail === "object") {
+        setLlmError(resp.data.detail as LlmErrorDetail);
+      } else {
+        const msg = typeof resp?.data?.detail === "string" ? resp.data.detail : "Failed to create guide";
+        setError(msg);
+      }
       setSubmitting(false);
     }
   };
@@ -136,6 +165,60 @@ export function GuideCreatePage() {
       </Title>
 
       {error && <Alert variant="danger" title={error} isInline style={{ marginBottom: 16 }} />}
+
+      {llmError && (
+        <Modal
+          variant={ModalVariant.medium}
+          isOpen
+          onClose={() => setLlmError(null)}
+        >
+          <ModalHeader
+            title={llmError.summary}
+            titleIconVariant={() => (
+              <Icon status="danger">
+                <ExclamationTriangleIcon />
+              </Icon>
+            )}
+          />
+          <ModalBody>
+            <Alert variant="warning" title="Troubleshooting Hint" isInline style={{ marginBottom: 16 }}>
+              {llmError.hint}
+            </Alert>
+            <DescriptionList isHorizontal>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Provider</DescriptionListTerm>
+                <DescriptionListDescription>{llmError.provider}</DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Model</DescriptionListTerm>
+                <DescriptionListDescription><code>{llmError.model}</code></DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Error Type</DescriptionListTerm>
+                <DescriptionListDescription><code>{llmError.error_type}</code></DescriptionListDescription>
+              </DescriptionListGroup>
+              <DescriptionListGroup>
+                <DescriptionListTerm>Elapsed</DescriptionListTerm>
+                <DescriptionListDescription>{llmError.elapsed_seconds}s</DescriptionListDescription>
+              </DescriptionListGroup>
+            </DescriptionList>
+            <Title headingLevel="h4" size="md" style={{ marginTop: 16, marginBottom: 8 }}>
+              Error Details
+            </Title>
+            <CodeBlock>
+              <CodeBlockCode>{llmError.message}</CodeBlockCode>
+            </CodeBlock>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="primary" onClick={() => setLlmError(null)}>
+              Close
+            </Button>
+            <Button variant="secondary" onClick={() => { setLlmError(null); handleSubmit(); }}>
+              Retry
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
 
       {similar.length > 0 && (
         <Alert variant="warning" title="Similar guides found" isInline style={{ marginBottom: 16 }}>
