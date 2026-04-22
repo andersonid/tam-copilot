@@ -153,6 +153,19 @@ export function GuideDetailPage() {
 
   const publicUrl = `${window.location.origin}/public/guides/${guide.id}`;
 
+  const handleViewHtml = async () => {
+    if (!guide.html_filename) return;
+    try {
+      const { data } = await api.get(`/guides/html/${guide.html_filename}`, { responseType: "text" });
+      const blob = new Blob([data], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      setActionError("Failed to load guide HTML");
+    }
+  };
+
   return (
     <>
       {actionError && (
@@ -176,9 +189,7 @@ export function GuideDetailPage() {
             <Button
               variant="secondary"
               icon={<ExternalLinkAltIcon />}
-              component="a"
-              href={`/api/guides/html/${guide.html_filename}`}
-              target="_blank"
+              onClick={handleViewHtml}
             >
               View HTML
             </Button>
