@@ -9,7 +9,7 @@ logger = logging.getLogger("tam_copilot.llm.openai")
 
 class OpenAICompatibleClient:
     def __init__(self, base_url: str, api_key: str):
-        self._client = AsyncOpenAI(base_url=base_url, api_key=api_key)
+        self._client = AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=180.0)
         self._base_url = base_url
 
     async def generate_structured(self, system_prompt: str, user_message: str, model: str) -> dict:
