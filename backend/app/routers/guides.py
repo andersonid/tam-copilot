@@ -153,7 +153,12 @@ async def create_guide(data: GuideCreate, db: AsyncSession = Depends(get_db)):
     logger.info("guide.create.record | guide_id=%d title=%r", guide.id, title)
 
     t_render = time.perf_counter()
-    html_content = render_guide(structured, slug, data.kcs_subtype)
+    html_content = render_guide(
+        structured, slug, data.kcs_subtype,
+        customer_name=customer.name if customer else "",
+        product_name=product.name if product else "",
+        touchpoint_date=str(data.touchpoint_date) if data.touchpoint_date else "",
+    )
     render_elapsed = time.perf_counter() - t_render
     filename = f"guide_{guide.id}.html"
     html_path = settings.html_dir / filename
@@ -455,7 +460,12 @@ async def regenerate_guide(guide_id: int, provider_id: int | None = None, db: As
         guide.title = structured["title"]
 
     t_render = time.perf_counter()
-    html_content = render_guide(structured, slug, guide.kcs_subtype)
+    html_content = render_guide(
+        structured, slug, guide.kcs_subtype,
+        customer_name=guide.customer.name if guide.customer else "",
+        product_name=guide.product.name if guide.product else "",
+        touchpoint_date=str(guide.touchpoint_date) if guide.touchpoint_date else "",
+    )
     render_elapsed = time.perf_counter() - t_render
     filename = f"guide_{guide.id}.html"
     html_path = settings.html_dir / filename

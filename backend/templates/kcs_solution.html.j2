@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ data.title | default("KCS Solution") }}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700;900&family=Red+Hat+Text:wght@400;500;700&family=Red+Hat+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;900&family=Red+Hat+Text:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   --rh-red: #EE0000;
   --rh-red-dark: #A30000;
   --rh-black: #151515;
+  --rh-gray-95: #151515;
   --rh-gray-900: #1F1F1F;
   --rh-gray-700: #3C3F42;
   --rh-gray-500: #6A6E73;
@@ -23,21 +24,70 @@
 
 body {
   font-family: 'Red Hat Text', sans-serif;
+  font-size: 15px;
   color: var(--rh-gray-900);
   background: var(--rh-white);
   line-height: 1.6;
 }
 
-.kcs-container { max-width: 800px; margin: 0 auto; padding: 2rem; }
-
-.kcs-header {
-  border-bottom: 3px solid var(--rh-red);
-  padding-bottom: 1.5rem;
-  margin-bottom: 2rem;
+.top-bar {
+  background: var(--rh-gray-95);
+  color: var(--rh-white);
+  padding: 12px 40px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-.kcs-header .rh-logo { font-family: 'Red Hat Display', sans-serif; font-weight: 900; color: var(--rh-red); font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
-.kcs-header h1 { font-family: 'Red Hat Display', sans-serif; font-size: 1.75rem; font-weight: 700; color: var(--rh-black); }
-.kcs-header .article-type { display: inline-block; background: var(--rh-red-dark); color: white; padding: 0.2rem 0.75rem; border-radius: 3px; font-size: 0.8rem; font-weight: 600; margin-top: 0.75rem; }
+.top-bar .divider { width: 1px; height: 20px; background: rgba(255,255,255,0.25); }
+.top-bar .nav-label { font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 500; }
+
+.hero {
+  background: linear-gradient(135deg, var(--rh-gray-95) 0%, #1a1a2e 50%, #16213e 100%);
+  color: var(--rh-white);
+  padding: 60px 40px 50px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  top: -50%; right: -10%;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(238,0,0,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.hero .tag {
+  display: inline-block;
+  background: rgba(238,0,0,0.25);
+  border: 1px solid rgba(238,0,0,0.5);
+  color: #ff6b6b;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 3px;
+  margin-bottom: 20px;
+}
+.hero h1 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 900; font-size: 38px; line-height: 1.15;
+  margin-bottom: 12px; position: relative; z-index: 1;
+}
+.hero .subtitle {
+  font-size: 17px; color: rgba(255,255,255,0.7);
+  font-weight: 400; max-width: 720px;
+  position: relative; z-index: 1;
+}
+.hero .meta-row {
+  display: flex; gap: 32px; margin-top: 28px;
+  flex-wrap: wrap; position: relative; z-index: 1;
+}
+.hero .meta-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.6); }
+.hero .meta-item strong { color: rgba(255,255,255,0.9); }
+
+.kcs-container { max-width: 800px; margin: 0 auto; padding: 2rem; }
 
 .kcs-section { margin-bottom: 2rem; }
 .kcs-section h2 {
@@ -63,13 +113,38 @@ p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; borde
 </style>
 </head>
 <body>
-<div class="kcs-container">
 
-<div class="kcs-header">
-  <div class="rh-logo">RED HAT KNOWLEDGE BASE</div>
-  <h1>{{ data.title }}</h1>
-  <span class="article-type">SOLUTION</span>
+<div class="top-bar">
+  <img src="https://static.redhat.com/libs/redhat/brand-assets/2/corp/logo--on-dark.svg" alt="Red Hat" height="32">
+  <div class="divider"></div>
+  <div class="nav-label">{{ data.title | default("KCS Solution") }}</div>
+  {% if data.get('meta', {}).get('customer') %}
+  <div class="divider"></div>
+  <div class="nav-label">{{ data.meta.customer }}</div>
+  {% endif %}
 </div>
+
+<div class="hero">
+  <div class="tag">KCS Solution</div>
+  <h1>{{ data.title }}</h1>
+  {% if data.get('subtitle') %}
+  <p class="subtitle">{{ data.subtitle }}</p>
+  {% endif %}
+  {% set meta = data.get('meta', {}) %}
+  {% if meta %}
+  <div class="meta-row">
+    {% if meta.get('customer') %}<div class="meta-item"><strong>Customer:</strong> {{ meta.customer }}</div>{% endif %}
+    {% if meta.get('product') %}<div class="meta-item"><strong>Product:</strong> {{ meta.product }}</div>{% endif %}
+    {% if meta.get('environment') %}<div class="meta-item"><strong>Environment:</strong> {{ meta.environment }}</div>{% endif %}
+    {% if meta.get('date') %}<div class="meta-item"><strong>Date:</strong> {{ meta.date }}</div>{% endif %}
+    {% for kv in meta.get('extra', []) %}
+    <div class="meta-item"><strong>{{ kv.key }}:</strong> {{ kv.value }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="kcs-container">
 
 <div class="kcs-section">
   <h2>Issue</h2>

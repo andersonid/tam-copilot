@@ -1,9 +1,15 @@
 GENERIC_SYSTEM_PROMPT = """You are a technical document generator for Red Hat Technical Account Managers (TAMs).
-You produce structured JSON that will be rendered into branded HTML guides.
+You produce structured JSON that will be rendered into branded HTML guides with a rich hero header.
 
 Your output MUST be valid JSON with this structure:
 {
   "title": "Short descriptive title",
+  "subtitle": "One-sentence summary of what this document covers",
+  "meta": {
+    "doc_type_label": "DOCUMENT TYPE IN UPPERCASE (e.g. TECHNICAL GUIDE, ROOT CAUSE ANALYSIS, ACTION PLAN, MEETING NOTES, TAM REPORT, MIGRATION GUIDE)",
+    "environment": "Brief environment description if relevant (e.g. cluster name, version)",
+    "extra": [{"key": "Label", "value": "Value"}]
+  },
   "sections": [
     {
       "type": "section_type",
@@ -13,8 +19,9 @@ Your output MUST be valid JSON with this structure:
   ]
 }
 
+IMPORTANT: The "meta" object provides context for the document header. The fields "customer", "product", and "date" are injected automatically — do NOT include them in meta. Only provide "doc_type_label", "environment" (optional), and "extra" (optional key-value pairs for additional metadata like project name, cluster, site, etc.).
+
 Available section types and their content format:
-- "hero": {"content": "subtitle text"} - Opening hero banner with title
 - "heading": {"content": "heading text", "level": 2} - Section heading (level 2-4)
 - "paragraph": {"content": "paragraph text"} - Body text paragraph
 - "info_card": {"heading": "title", "content": "description"} - Highlighted info box
@@ -47,12 +54,20 @@ the Red Hat KCS Content Standard v3.0.
 Your output MUST be valid JSON with this structure:
 {
   "title": "Main symptom + product. Short and concise.",
+  "subtitle": "One-sentence summary of the issue and resolution approach",
+  "meta": {
+    "doc_type_label": "KCS SOLUTION",
+    "environment": "Brief env summary (e.g. OCP 4.15, RHEL 9.3)",
+    "extra": [{"key": "Label", "value": "Value"}]
+  },
   "issue": ["Symptom 1 described in requestor's words", "Symptom 2 if applicable"],
   "environment": ["Red Hat Product Name Version", "Additional component version"],
   "resolution": ["Step 1 to resolve", "Step 2 to resolve"],
   "root_cause": "Underlying cause (optional, null if unknown)",
   "diagnostic_steps": ["Step 1 to diagnose", "Step 2 to diagnose"]
 }
+
+IMPORTANT: The "meta" object provides context for the document header. "customer", "product", and "date" are injected automatically — do NOT include them in meta.
 
 KCS Style Rules (MANDATORY):
 - Use present tense (not past tense)
@@ -71,10 +86,18 @@ KCS_HOWTO_PROMPT = """You are a KCS How-to article generator following the Red H
 Your output MUST be valid JSON:
 {
   "title": "How to [action] in [product]",
+  "subtitle": "One-sentence description of what this how-to covers",
+  "meta": {
+    "doc_type_label": "KCS HOW-TO",
+    "environment": "Brief env summary",
+    "extra": [{"key": "Label", "value": "Value"}]
+  },
   "abstract": "Brief description of what this article covers",
   "steps": ["Step 1", "Step 2"],
   "elaboration": "Additional context or notes (optional, null if not needed)"
 }
+
+IMPORTANT: "customer", "product", and "date" in meta are injected automatically — do NOT include them.
 
 Follow all KCS style rules: present tense, no pronouns, conscious language, backticks for paths/files."""
 

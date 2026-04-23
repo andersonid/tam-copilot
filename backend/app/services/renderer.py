@@ -13,7 +13,23 @@ _env = Environment(
 )
 
 
-def render_guide(data: dict, doc_type_slug: str, kcs_subtype: str | None = None) -> str:
+def render_guide(
+    data: dict,
+    doc_type_slug: str,
+    kcs_subtype: str | None = None,
+    *,
+    customer_name: str = "",
+    product_name: str = "",
+    touchpoint_date: str = "",
+) -> str:
+    meta = data.setdefault("meta", {})
+    if customer_name:
+        meta.setdefault("customer", customer_name)
+    if product_name:
+        meta.setdefault("product", product_name)
+    if touchpoint_date:
+        meta.setdefault("date", touchpoint_date)
+
     if doc_type_slug == "kcs-article":
         template_name = f"kcs_{kcs_subtype or 'solution'}.html.j2"
         logger.info("render.start | type=kcs template=%s", template_name)

@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ data.title | default("Technical Guide") }}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700;900&family=Red+Hat+Text:wght@400;500;700&family=Red+Hat+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;900&family=Red+Hat+Text:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   --rh-red: #EE0000;
   --rh-red-dark: #A30000;
   --rh-black: #151515;
+  --rh-gray-95: #151515;
   --rh-gray-900: #1F1F1F;
   --rh-gray-700: #3C3F42;
   --rh-gray-500: #6A6E73;
@@ -28,24 +29,74 @@
 
 body {
   font-family: 'Red Hat Text', sans-serif;
+  font-size: 15px;
   color: var(--rh-gray-900);
   background: var(--rh-gray-100);
   line-height: 1.6;
 }
 
-.guide-container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
-
-.hero {
-  background: linear-gradient(135deg, var(--rh-black) 0%, var(--rh-gray-700) 100%);
+/* ─── Top Bar ─── */
+.top-bar {
+  background: var(--rh-gray-95);
   color: var(--rh-white);
-  padding: 3rem 2.5rem;
-  border-radius: 8px;
-  margin-bottom: 2rem;
-  border-left: 6px solid var(--rh-red);
+  padding: 12px 40px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-.hero h1 { font-family: 'Red Hat Display', sans-serif; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
-.hero .subtitle { color: var(--rh-gray-300); font-size: 1.1rem; }
-.hero .rh-logo { font-family: 'Red Hat Display', sans-serif; font-weight: 900; color: var(--rh-red); font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 1rem; }
+.top-bar .divider { width: 1px; height: 20px; background: rgba(255,255,255,0.25); }
+.top-bar .nav-label { font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 500; }
+
+/* ─── Hero ─── */
+.hero {
+  background: linear-gradient(135deg, var(--rh-gray-95) 0%, #1a1a2e 50%, #16213e 100%);
+  color: var(--rh-white);
+  padding: 60px 40px 50px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  top: -50%; right: -10%;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(238,0,0,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.hero .tag {
+  display: inline-block;
+  background: rgba(238,0,0,0.25);
+  border: 1px solid rgba(238,0,0,0.5);
+  color: #ff6b6b;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 3px;
+  margin-bottom: 20px;
+}
+.hero h1 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 900; font-size: 38px; line-height: 1.15;
+  margin-bottom: 12px; position: relative; z-index: 1;
+}
+.hero h1 .accent { color: var(--rh-red); }
+.hero .subtitle {
+  font-size: 17px; color: rgba(255,255,255,0.7);
+  font-weight: 400; max-width: 720px;
+  position: relative; z-index: 1;
+}
+.hero .meta-row {
+  display: flex; gap: 32px; margin-top: 28px;
+  flex-wrap: wrap; position: relative; z-index: 1;
+}
+.hero .meta-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.6); }
+.hero .meta-item strong { color: rgba(255,255,255,0.9); }
+
+/* ─── Container ─── */
+.guide-container { max-width: 1060px; margin: 0 auto; padding: 32px 40px 60px; }
 
 h2 { font-family: 'Red Hat Display', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--rh-black); margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--rh-red); }
 h3 { font-family: 'Red Hat Display', sans-serif; font-size: 1.2rem; font-weight: 700; color: var(--rh-gray-700); margin: 1.5rem 0 0.75rem; }
@@ -129,21 +180,59 @@ hr.divider { border: none; border-top: 2px solid var(--rh-gray-300); margin: 2re
 .footer { text-align: center; padding: 2rem 0 1rem; color: var(--rh-gray-500); font-size: 0.85rem; border-top: 1px solid var(--rh-gray-300); margin-top: 3rem; }
 .footer .rh-wordmark { font-family: 'Red Hat Display', sans-serif; font-weight: 900; color: var(--rh-red); }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({startOnLoad:true, theme:'neutral'});</script>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: {
+  fontFamily: "'Red Hat Text', sans-serif", fontSize: '13px',
+  primaryColor: '#e8e8e8', primaryTextColor: '#292929', primaryBorderColor: '#b0b0b0',
+  todayLineColor: '#ee0000'
+}});
+</script>
 </head>
 <body>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <img src="https://static.redhat.com/libs/redhat/brand-assets/2/corp/logo--on-dark.svg" alt="Red Hat" height="32">
+  <div class="divider"></div>
+  <div class="nav-label">{{ data.title | default("Technical Guide") }}</div>
+  {% if data.get('meta', {}).get('customer') %}
+  <div class="divider"></div>
+  <div class="nav-label">{{ data.meta.customer }}</div>
+  {% endif %}
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  {% if data.get('meta', {}).get('doc_type_label') %}
+  <div class="tag">{{ data.meta.doc_type_label }}</div>
+  {% endif %}
+  <h1>{{ data.title | default("Technical Guide") }}</h1>
+  {% if data.get('subtitle') %}
+  <p class="subtitle">{{ data.subtitle }}</p>
+  {% endif %}
+  {% set meta = data.get('meta', {}) %}
+  {% if meta %}
+  <div class="meta-row">
+    {% if meta.get('customer') %}<div class="meta-item"><strong>Customer:</strong> {{ meta.customer }}</div>{% endif %}
+    {% if meta.get('product') %}<div class="meta-item"><strong>Product:</strong> {{ meta.product }}</div>{% endif %}
+    {% if meta.get('environment') %}<div class="meta-item"><strong>Environment:</strong> {{ meta.environment }}</div>{% endif %}
+    {% if meta.get('date') %}<div class="meta-item"><strong>Date:</strong> {{ meta.date }}</div>{% endif %}
+    {% if meta.get('author') %}<div class="meta-item"><strong>Author:</strong> {{ meta.author }}</div>{% endif %}
+    {% for kv in meta.get('extra', []) %}
+    <div class="meta-item"><strong>{{ kv.key }}:</strong> {{ kv.value }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
 <div class="guide-container">
 
 {% for section in data.get('sections', []) %}
   {% set stype = section.get('type', 'paragraph') %}
 
   {% if stype == 'hero' %}
-  <div class="hero">
-    <div class="rh-logo">RED HAT</div>
-    <h1>{{ data.title }}</h1>
-    {% if section.get('content') %}<div class="subtitle">{{ section.content }}</div>{% endif %}
-  </div>
+  {# hero is rendered above — skip #}
 
   {% elif stype == 'heading' %}
   {% set level = section.get('level', 2) %}
