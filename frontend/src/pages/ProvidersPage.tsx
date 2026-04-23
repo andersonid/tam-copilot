@@ -172,14 +172,16 @@ export function ProvidersPage() {
         <Alert variant="danger" title={actionError} isInline style={{ marginBottom: 16 }} />
       )}
 
-      <Button
-        variant="primary"
-        icon={<PlusCircleIcon />}
-        onClick={openCreate}
-        style={{ marginBottom: 16 }}
-      >
-        Add Provider
-      </Button>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+        <Button
+          variant="secondary"
+          icon={<PlusCircleIcon />}
+          onClick={openCreate}
+          size="sm"
+        >
+          Add Provider
+        </Button>
+      </div>
 
       {!error && providers.length === 0 ? (
         <EmptyState headingLevel="h3" titleText="No providers configured" icon={CogIcon}>
