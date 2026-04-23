@@ -22,7 +22,7 @@ import {
   HelperTextItem,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
-import { PlusCircleIcon, CheckCircleIcon, CogIcon } from "@patternfly/react-icons";
+import { PlusCircleIcon, CheckCircleIcon, CogIcon, PencilAltIcon, TrashIcon } from "@patternfly/react-icons";
 import api from "../services/api";
 import type { LLMProvider } from "../types/models";
 
@@ -38,6 +38,7 @@ export function ProvidersPage() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [testResult, setTestResult] = useState<{ id: number; ok: boolean; msg: string } | null>(
     null
   );
@@ -64,25 +65,71 @@ export function ProvidersPage() {
 
   useEffect(load, []);
 
-  const handleCreate = async () => {
+  const resetForm = () => {
+    setName("");
+    setProvType("openai_compatible");
+    setBaseUrl("");
+    setApiKey("");
+    setModel("");
+    setEditingId(null);
+    setActionError("");
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setModalOpen(true);
+  };
+
+  const openEdit = (p: LLMProvider) => {
+    setEditingId(p.id);
+    setName(p.name);
+    setProvType(p.provider_type);
+    setBaseUrl(p.base_url ?? "");
+    setApiKey("");
+    setModel(p.default_model ?? "");
+    setActionError("");
+    setModalOpen(true);
+  };
+
+  const handleSave = async () => {
     setActionError("");
     try {
-      await api.post("/providers", {
-        name,
-        provider_type: provType,
-        base_url: baseUrl || null,
-        api_key: apiKey,
-        default_model: model || null,
-      });
+      if (editingId) {
+        const payload: Record<string, unknown> = {
+          name,
+          provider_type: provType,
+          base_url: baseUrl || null,
+          default_model: model || null,
+        };
+        if (apiKey) payload.api_key = apiKey;
+        await api.put(`/providers/${editingId}`, payload);
+      } else {
+        await api.post("/providers", {
+          name,
+          provider_type: provType,
+          base_url: baseUrl || null,
+          api_key: apiKey,
+          default_model: model || null,
+        });
+      }
       setModalOpen(false);
-      setName("");
-      setBaseUrl("");
-      setApiKey("");
-      setModel("");
+      resetForm();
       load();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setActionError(msg || "Failed to create provider");
+      setActionError(msg || (editingId ? "Failed to update provider" : "Failed to create provider"));
+    }
+  };
+
+  const handleDelete = async (p: LLMProvider) => {
+    if (!confirm(`Delete provider "${p.name}"? This cannot be undone.`)) return;
+    setActionError("");
+    try {
+      await api.delete(`/providers/${p.id}`);
+      load();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setActionError(msg || "Failed to delete provider");
     }
   };
 
@@ -128,7 +175,7 @@ export function ProvidersPage() {
       <Button
         variant="primary"
         icon={<PlusCircleIcon />}
-        onClick={() => setModalOpen(true)}
+        onClick={openCreate}
         style={{ marginBottom: 16 }}
       >
         Add Provider
@@ -142,7 +189,7 @@ export function ProvidersPage() {
           </EmptyStateBody>
           <EmptyStateFooter>
             <EmptyStateActions>
-              <Button variant="primary" onClick={() => setModalOpen(true)}>
+              <Button variant="primary" onClick={openCreate}>
                 Add Provider
               </Button>
             </EmptyStateActions>
@@ -187,16 +234,34 @@ export function ProvidersPage() {
                     <Button variant="secondary" size="sm" onClick={() => handleTest(p)}>
                       Test
                     </Button>
+                    <Button
+                      variant="plain"
+                      size="sm"
+                      icon={<PencilAltIcon />}
+                      onClick={() => openEdit(p)}
+                      style={{ marginLeft: 4 }}
+                      aria-label="Edit"
+                    />
                     {!p.is_default && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        icon={<CheckCircleIcon />}
-                        onClick={() => handleSetDefault(p)}
-                        style={{ marginLeft: 4 }}
-                      >
-                        Set Default
-                      </Button>
+                      <>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          icon={<CheckCircleIcon />}
+                          onClick={() => handleSetDefault(p)}
+                          style={{ marginLeft: 4 }}
+                        >
+                          Set Default
+                        </Button>
+                        <Button
+                          variant="plain"
+                          size="sm"
+                          icon={<TrashIcon />}
+                          onClick={() => handleDelete(p)}
+                          style={{ marginLeft: 4 }}
+                          aria-label="Delete"
+                        />
+                      </>
                     )}
                   </Td>
                 </Tr>
@@ -206,8 +271,8 @@ export function ProvidersPage() {
         )
       )}
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} variant="medium">
-        <ModalHeader title="Add LLM Provider" />
+      <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} variant="medium">
+        <ModalHeader title={editingId ? "Edit LLM Provider" : "Add LLM Provider"} />
         <ModalBody>
           {actionError && (
             <Alert variant="danger" title={actionError} isInline style={{ marginBottom: 12 }} />
@@ -231,20 +296,26 @@ export function ProvidersPage() {
                 </HelperTextItem>
               </HelperText>
             </FormGroup>
-            <FormGroup label="API Key" isRequired fieldId="prov-key">
+            <FormGroup label="API Key" isRequired={!editingId} fieldId="prov-key">
               <TextInput
                 id="prov-key"
                 type="password"
                 value={apiKey}
                 onChange={(_e, v) => setApiKey(v)}
+                placeholder={editingId ? "Leave empty to keep current key" : ""}
               />
+              {editingId && (
+                <HelperText>
+                  <HelperTextItem>Leave empty to keep the existing API key</HelperTextItem>
+                </HelperText>
+              )}
             </FormGroup>
             <FormGroup label="Default Model" fieldId="prov-model">
               <TextInput
                 id="prov-model"
                 value={model}
                 onChange={(_e, v) => setModel(v)}
-                placeholder="e.g. qwen3-14b"
+                placeholder="e.g. google/gemini-2.0-flash-001"
               />
             </FormGroup>
           </Form>
@@ -252,12 +323,12 @@ export function ProvidersPage() {
         <ModalFooter>
           <Button
             variant="primary"
-            onClick={handleCreate}
-            isDisabled={!name.trim() || !apiKey.trim()}
+            onClick={handleSave}
+            isDisabled={!name.trim() || (!editingId && !apiKey.trim())}
           >
-            Create
+            {editingId ? "Save Changes" : "Create"}
           </Button>
-          <Button variant="link" onClick={() => setModalOpen(false)}>
+          <Button variant="link" onClick={() => { setModalOpen(false); resetForm(); }}>
             Cancel
           </Button>
         </ModalFooter>
