@@ -75,7 +75,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <MastheadContent>
         <Toolbar>
           <ToolbarContent>
-            <ToolbarItem>
+            <ToolbarItem align={{ default: "alignEnd" }}>
               <SearchInput
                 placeholder="Search guides..."
                 value={searchValue}
@@ -84,7 +84,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 onClear={() => setSearchValue("")}
               />
             </ToolbarItem>
-            <ToolbarItem align={{ default: "alignEnd" }}>
+            <ToolbarItem>
               <Dropdown
                 isOpen={userMenuOpen}
                 onOpenChange={setUserMenuOpen}
@@ -138,6 +138,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <PageSidebarBody>
         <Nav>
           <NavList>
+            <NavItem isActive={isActive("/search")} onClick={() => navTo("/search")}>
+              <SearchIcon style={{ marginRight: 8 }} />
+              Search
+            </NavItem>
+
             <NavItem isActive={isActive("/")} onClick={() => navTo("/")}>
               <TachometerAltIcon style={{ marginRight: 8 }} />
               Dashboard
@@ -162,11 +167,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 Import HTML
               </NavItem>
             </NavExpandable>
-
-            <NavItem isActive={isActive("/search")} onClick={() => navTo("/search")}>
-              <SearchIcon style={{ marginRight: 8 }} />
-              Search
-            </NavItem>
 
             <NavExpandable
               title="Administration"
