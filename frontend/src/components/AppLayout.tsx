@@ -67,8 +67,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <Masthead>
       <MastheadMain>
         <MastheadBrand>
-          <a href="/" className="rh-brand-logo" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+          <a href="/" className="rh-brand-logo" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img src={logoSrc} alt="Red Hat Technical Account Management" />
+            <span style={{
+              background: "#c00",
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: ".5px",
+              padding: "2px 10px",
+              borderRadius: 12,
+              lineHeight: "20px",
+              whiteSpace: "nowrap",
+              textTransform: "uppercase",
+            }}>Copilot</span>
           </a>
         </MastheadBrand>
       </MastheadMain>
