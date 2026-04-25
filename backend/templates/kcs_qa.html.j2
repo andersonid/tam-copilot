@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ data.title | default("KCS How-to") }}</title>
+<title>{{ data.title | default("KCS Q/A") }}</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;900&family=Red+Hat+Text:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600;700&display=swap');
 
@@ -19,15 +19,7 @@
   --rh-gray-100: #F0F0F0;
   --rh-white: #FFFFFF;
   --rh-blue: #0066CC;
-  --rh-green: #3E8635;
-  --rh-teal: #009596;
-  --surface: var(--rh-white);
-  --surface2: #f5f5f5;
-  --border: var(--rh-gray-300);
-  --text: var(--rh-gray-900);
-  --text-dim: var(--rh-gray-500);
-  --blue-light: #E0F0FF;
-  --green-light: #E9F7DF;
+  --rh-blue-light: #E0F0FF;
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -35,7 +27,7 @@
 body {
   font-family: 'Red Hat Text', sans-serif;
   font-size: 15px;
-  color: var(--text);
+  color: var(--rh-gray-900);
   background: var(--rh-gray-100);
   line-height: 1.6;
 }
@@ -100,7 +92,7 @@ body {
 .kcs-container { max-width: 860px; margin: 0 auto; padding: 2rem; }
 
 .abstract-card {
-  background: var(--blue-light);
+  background: var(--rh-blue-light);
   border: 1px solid var(--rh-blue);
   border-left: 4px solid var(--rh-blue);
   border-radius: 6px;
@@ -109,54 +101,44 @@ body {
   font-size: 15px;
 }
 
-.step-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 16px;
+.answer-section {
+  background: var(--rh-white);
+  border: 1px solid var(--rh-gray-300);
+  border-radius: 6px;
+  margin-bottom: 20px;
   overflow: hidden;
 }
-.step-head {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface2);
+.answer-header {
+  background: var(--rh-gray-100);
+  border-bottom: 1px solid var(--rh-gray-300);
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
-.step-num {
+.answer-num {
   font-family: 'Red Hat Mono', monospace;
-  font-size: 13px; font-weight: 700;
-  color: white; background: var(--rh-red);
-  width: 30px; height: 30px;
-  border-radius: 50%;
+  font-size: 12px; font-weight: 700;
+  color: var(--rh-white);
+  background: var(--rh-blue);
+  min-width: 28px; height: 28px;
+  border-radius: 999px;
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
 }
-.step-title {
+.answer-header h2 {
   font-family: 'Red Hat Display', sans-serif;
-  font-size: 15px; font-weight: 600;
+  font-weight: 700; font-size: 18px; color: var(--rh-black);
+  margin: 0; padding: 0; border: none;
 }
-.step-body { padding: 18px 22px; }
-.step-body p:last-child { margin-bottom: 0; }
-
-.elaboration {
-  background: var(--green-light);
-  border: 1px solid var(--rh-green);
-  border-left: 4px solid var(--rh-green);
-  border-radius: 6px;
-  padding: 18px 22px;
-  margin-top: 8px;
-  font-size: 14px;
+.answer-body {
+  padding: 22px;
+  line-height: 1.7;
 }
-.elaboration h3 {
-  font-family: 'Red Hat Display', sans-serif;
-  font-size: 14px; font-weight: 700;
-  color: var(--rh-green);
-  margin: 0 0 8px; padding: 0; border: none;
-}
-
-pre { background: var(--rh-gray-95); color: #E0E0E0; padding: 1rem; border-radius: 4px; overflow-x: auto; font-family: 'Red Hat Mono', monospace; font-size: 0.9rem; margin: 0.75rem 0; border-left: 4px solid var(--rh-teal); }
-code { font-family: 'Red Hat Mono', monospace; }
-p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.9em; }
+.answer-body p { margin-bottom: 0.75rem; }
+.answer-body ul, .answer-body ol { padding-left: 1.5rem; margin-bottom: 0.75rem; }
+.answer-body li { margin-bottom: 0.4rem; }
+.answer-body code { font-family: 'Red Hat Mono', monospace; background: var(--rh-gray-100); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.9em; }
+.answer-body pre { background: var(--rh-gray-95); color: #E0E0E0; padding: 1rem; border-radius: 4px; overflow-x: auto; font-family: 'Red Hat Mono', monospace; font-size: 0.9rem; margin: 0.75rem 0; border-left: 4px solid var(--rh-blue); }
 
 .kcs-footer {
   background: var(--rh-gray-95);
@@ -166,11 +148,12 @@ p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; borde
   font-size: 0.75rem;
   margin-top: 2rem;
 }
+.kcs-footer a { color: #c7c7c7; text-decoration: none; }
 
 @media print {
   .top-bar { position: static; }
   body { background: white; }
-  .step-card { break-inside: avoid; }
+  .answer-section { break-inside: avoid; }
 }
 </style>
 </head>
@@ -179,7 +162,7 @@ p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; borde
 <div class="top-bar">
   <img src="https://static.redhat.com/libs/redhat/brand-assets/2/corp/logo--on-dark.svg" alt="Red Hat" height="32">
   <div class="divider"></div>
-  <div class="nav-label">{{ data.title | default("KCS How-to") }}</div>
+  <div class="nav-label">{{ data.title | default("KCS Q/A") }}</div>
   {% if data.get('meta', {}).get('customer') %}
   <div class="divider"></div>
   <div class="nav-label">{{ data.meta.customer }}</div>
@@ -187,7 +170,7 @@ p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; borde
 </div>
 
 <div class="hero">
-  <div class="tag">{{ data.get('meta', {}).get('doc_type_label', 'KCS HOW-TO') }}</div>
+  <div class="tag">{{ data.get('meta', {}).get('doc_type_label', 'KCS Q/A') }}</div>
   <h1>{{ data.title }}</h1>
   {% if data.get('subtitle') %}
   <p class="subtitle">{{ data.subtitle }}</p>
@@ -212,29 +195,20 @@ p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; borde
 <div class="abstract-card">{{ data.abstract }}</div>
 {% endif %}
 
-<h2 style="font-family:'Red Hat Display',sans-serif;font-size:18px;font-weight:700;color:var(--rh-black);margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid var(--rh-red);">Steps</h2>
-
-{% for step in data.get('steps', []) %}
-<div class="step-card">
-  <div class="step-head">
-    <div class="step-num">{{ loop.index }}</div>
-    <div class="step-title">Step {{ loop.index }}</div>
+{% for answer in data.get('answers', []) %}
+<div class="answer-section">
+  <div class="answer-header">
+    <div class="answer-num">{{ loop.index }}</div>
+    <h2>{{ answer.heading }}</h2>
   </div>
-  <div class="step-body">
-    <p>{{ step }}</p>
+  <div class="answer-body">
+    <p>{{ answer.content }}</p>
   </div>
 </div>
 {% endfor %}
 
-{% if data.get('elaboration') %}
-<div class="elaboration">
-  <h3>Additional Notes</h3>
-  <p>{{ data.elaboration }}</p>
-</div>
-{% endif %}
-
 <div class="kcs-footer">
-  KCS How-To &mdash; Generated by TAM-Copilot &mdash; &copy; Red Hat, Inc.
+  KCS Q/A Article &mdash; Generated by TAM-Copilot &mdash; &copy; Red Hat, Inc.
   {% if data.get('meta', {}).get('author') %}&mdash; {{ data.meta.author }}{% endif %}
 </div>
 

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ data.title | default("Assessment") }}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;900&family=Red+Hat+Text:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --rh-red: #EE0000;
+  --rh-red-dark: #A30000;
+  --rh-black: #151515;
+  --rh-gray-95: #151515;
+  --rh-gray-900: #1F1F1F;
+  --rh-gray-700: #3C3F42;
+  --rh-gray-500: #6A6E73;
+  --rh-gray-300: #D2D2D2;
+  --rh-gray-100: #F0F0F0;
+  --rh-white: #FFFFFF;
+  --rh-blue: #0066CC;
+  --rh-blue-dark: #004080;
+  --rh-green: #3E8635;
+  --rh-orange: #EC7A08;
+  --rh-purple: #6753AC;
+  --rh-teal: #009596;
+  --danger: #C9190B;
+  --surface: var(--rh-white);
+  --surface2: #f5f5f5;
+  --border: var(--rh-gray-300);
+  --text: var(--rh-gray-900);
+  --text-dim: var(--rh-gray-500);
+  --blue-light: #E0F0FF;
+  --green-light: #E9F7DF;
+  --orange-light: #FFE8CC;
+  --teal-light: #DAF2F2;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--rh-gray-100);
+  line-height: 1.6;
+}
+
+.top-bar {
+  background: var(--rh-gray-95);
+  color: var(--rh-white);
+  padding: 12px 40px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-bar .divider { width: 1px; height: 20px; background: rgba(255,255,255,0.25); }
+.top-bar .nav-label { font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 500; }
+
+.hero {
+  background: linear-gradient(135deg, var(--rh-gray-95) 0%, #1a1a2e 50%, #16213e 100%);
+  color: var(--rh-white);
+  padding: 60px 40px 50px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  top: -50%; right: -10%;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(238,0,0,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.hero .tag {
+  display: inline-block;
+  background: rgba(238,0,0,0.25);
+  border: 1px solid rgba(238,0,0,0.5);
+  color: #ff6b6b;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 3px;
+  margin-bottom: 20px;
+}
+.hero h1 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 900; font-size: 38px; line-height: 1.15;
+  margin-bottom: 12px; position: relative; z-index: 1;
+}
+.hero .subtitle {
+  font-size: 17px; color: rgba(255,255,255,0.7);
+  font-weight: 400; max-width: 720px;
+  position: relative; z-index: 1;
+}
+.hero .meta-row {
+  display: flex; gap: 32px; margin-top: 28px;
+  flex-wrap: wrap; position: relative; z-index: 1;
+}
+.hero .meta-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.6); }
+.hero .meta-item strong { color: rgba(255,255,255,0.9); }
+
+.assessment-container { max-width: 860px; margin: 0 auto; padding: 2rem; }
+
+.intro-card {
+  background: var(--blue-light);
+  border: 1px solid var(--rh-blue);
+  border-left: 4px solid var(--rh-blue);
+  border-radius: 6px;
+  padding: 18px 22px;
+  margin-bottom: 2rem;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.progress-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 22px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.progress-bar .bar-track {
+  flex: 1; height: 8px;
+  background: var(--rh-gray-100);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-bar .bar-fill {
+  height: 100%;
+  background: var(--rh-green);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+.progress-bar .bar-label {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  color: var(--text-dim); white-space: nowrap;
+}
+
+.section-block {
+  margin-bottom: 32px;
+}
+.section-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--rh-red);
+}
+.section-num {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  color: var(--rh-white); background: var(--rh-red);
+  min-width: 28px; height: 28px;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+}
+.section-header h2 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--rh-black);
+  margin: 0; padding: 0; border: none;
+}
+.section-desc {
+  font-size: 13px; color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+.question-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 22px;
+  margin-bottom: 14px;
+}
+.question-card .q-label {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  color: var(--rh-red);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.question-card .q-text {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 600; font-size: 15px;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.question-card .q-hint {
+  font-size: 12px; color: var(--text-dim);
+  font-style: italic; margin-bottom: 10px;
+}
+
+.question-card textarea {
+  display: block; width: 100%;
+  padding: 10px 12px;
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 14px; line-height: 1.5;
+  color: var(--text);
+  background: var(--rh-gray-100);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  resize: vertical; min-height: 80px;
+  transition: border-color 0.2s;
+}
+.question-card textarea:focus {
+  outline: none; border-color: var(--rh-blue);
+  box-shadow: 0 0 0 2px rgba(0,102,204,0.15);
+}
+
+.question-card .options {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.question-card .option-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--rh-gray-100);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  font-size: 14px;
+}
+.question-card .option-item:hover { border-color: var(--rh-blue); }
+.question-card .option-item input { accent-color: var(--rh-red); }
+
+.rating-scale {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 4px;
+}
+.rating-scale .scale-labels {
+  display: flex; justify-content: space-between; width: 100%;
+  font-size: 11px; color: var(--text-dim);
+  margin-top: 4px;
+}
+.rating-scale .stars {
+  display: flex; gap: 4px;
+}
+.rating-scale .star {
+  width: 32px; height: 32px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 14px; font-weight: 700;
+  font-family: 'Red Hat Mono', monospace;
+  color: var(--text-dim);
+  background: var(--surface);
+  transition: all 0.15s;
+}
+.rating-scale .star:hover, .rating-scale .star.selected {
+  background: var(--rh-red);
+  color: var(--rh-white);
+  border-color: var(--rh-red);
+}
+
+.respondent-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 22px;
+  margin-bottom: 16px;
+}
+.respondent-section label {
+  display: block;
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 600; font-size: 14px;
+  margin-bottom: 6px;
+}
+.respondent-section input {
+  width: 100%; padding: 10px 12px;
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--rh-gray-100);
+}
+.respondent-section input:focus {
+  outline: none; border-color: var(--rh-blue);
+  box-shadow: 0 0 0 2px rgba(0,102,204,0.15);
+}
+
+.submit-row {
+  display: flex; gap: 12px; margin-top: 24px;
+}
+.btn-submit {
+  padding: 12px 32px;
+  background: var(--rh-red);
+  color: var(--rh-white);
+  border: none; border-radius: 6px;
+  font-family: 'Red Hat Text', sans-serif;
+  font-weight: 700; font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-submit:hover { background: var(--rh-red-dark); }
+.btn-submit:disabled { background: var(--rh-gray-300); cursor: not-allowed; }
+.btn-draft {
+  padding: 12px 32px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'Red Hat Text', sans-serif;
+  font-weight: 700; font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.btn-draft:hover { border-color: var(--rh-blue); }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--rh-gray-95);
+  color: var(--rh-white);
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px; font-weight: 600;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  display: none;
+  z-index: 200;
+}
+.toast.show { display: block; animation: fadeInOut 3s forwards; }
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.doc-footer {
+  background: var(--rh-gray-95);
+  color: #a3a3a3;
+  padding: 24px 40px;
+  margin-top: 3rem;
+  display: flex; align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+.doc-footer .branding {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 900; color: var(--rh-red); font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .hero { padding: 40px 20px 30px; }
+  .assessment-container { padding: 16px; }
+  .doc-footer { flex-direction: column; gap: 12px; text-align: center; }
+}
+
+@media print {
+  .top-bar { position: static; }
+  .submit-row, .progress-bar, .btn-draft, .btn-submit { display: none; }
+  body { background: white; }
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <img src="https://static.redhat.com/libs/redhat/brand-assets/2/corp/logo--on-dark.svg" alt="Red Hat" height="32">
+  <div class="divider"></div>
+  <div class="nav-label">{{ data.title | default("Assessment") }}</div>
+  {% if data.get('meta', {}).get('customer') %}
+  <div class="divider"></div>
+  <div class="nav-label">{{ data.meta.customer }}</div>
+  {% endif %}
+</div>
+
+<div class="hero">
+  <div class="tag">{{ data.get('meta', {}).get('doc_type_label', 'ASSESSMENT') }}</div>
+  <h1>{{ data.title }}</h1>
+  {% if data.get('subtitle') %}
+  <p class="subtitle">{{ data.subtitle }}</p>
+  {% endif %}
+  {% set meta = data.get('meta', {}) %}
+  {% if meta %}
+  <div class="meta-row">
+    {% if meta.get('customer') %}<div class="meta-item"><strong>Customer:</strong> {{ meta.customer }}</div>{% endif %}
+    {% if meta.get('product') %}<div class="meta-item"><strong>Product:</strong> {{ meta.product }}</div>{% endif %}
+    {% if meta.get('date') %}<div class="meta-item"><strong>Date:</strong> {{ meta.date }}</div>{% endif %}
+    {% if meta.get('author') %}<div class="meta-item"><strong>Author:</strong> {{ meta.author }}</div>{% endif %}
+    {% for kv in meta.get('extra', []) %}
+    <div class="meta-item"><strong>{{ kv.key }}:</strong> {{ kv.value }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="assessment-container">
+
+{% if data.get('introduction') %}
+<div class="intro-card">{{ data.introduction }}</div>
+{% endif %}
+
+<div class="progress-bar">
+  <div class="bar-track"><div class="bar-fill" id="progressFill"></div></div>
+  <div class="bar-label" id="progressLabel">0 / 0</div>
+</div>
+
+<form id="assessmentForm">
+
+<div class="respondent-section">
+  <label for="respondentName">Your Name</label>
+  <input type="text" id="respondentName" name="_respondent_name" placeholder="Enter your full name" required>
+</div>
+
+{% set section_colors = ['var(--rh-red)', 'var(--rh-blue)', 'var(--rh-teal)', 'var(--rh-purple)', 'var(--rh-orange)', 'var(--rh-green)'] %}
+
+{% for section in data.get('sections', []) %}
+<div class="section-block">
+  <div class="section-header">
+    <div class="section-num" style="background:{{ section_colors[loop.index0 % 6] }}">{{ loop.index }}</div>
+    <h2>{{ section.heading }}</h2>
+  </div>
+  {% if section.get('description') %}
+  <div class="section-desc">{{ section.description }}</div>
+  {% endif %}
+
+  {% for q in section.get('questions', []) %}
+  <div class="question-card" data-qid="{{ q.id }}">
+    <div class="q-label">{{ q.id }}</div>
+    <div class="q-text">{{ q.question }}</div>
+    {% if q.get('hint') %}<div class="q-hint">{{ q.hint }}</div>{% endif %}
+
+    {% if q.type == 'text' %}
+    <textarea name="{{ q.id }}" rows="3" placeholder="Type your answer here..."></textarea>
+
+    {% elif q.type == 'choice' %}
+    <div class="options">
+      {% for opt in q.get('options', []) %}
+      <label class="option-item">
+        <input type="{{ 'checkbox' if q.get('multiple') else 'radio' }}" name="{{ q.id }}" value="{{ opt }}">
+        {{ opt }}
+      </label>
+      {% endfor %}
+    </div>
+
+    {% elif q.type == 'rating' %}
+    <div class="rating-scale">
+      <div>
+        <div class="stars" data-name="{{ q.id }}">
+          {% for n in range(q.get('scale_min', 1), q.get('scale_max', 5) + 1) %}
+          <div class="star" data-val="{{ n }}">{{ n }}</div>
+          {% endfor %}
+        </div>
+        {% if q.get('scale_labels') %}
+        <div class="scale-labels">
+          <span>{{ q.scale_labels[0] }}</span>
+          <span>{{ q.scale_labels[1] if q.scale_labels|length > 1 else '' }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    <input type="hidden" name="{{ q.id }}" value="">
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+
+<div class="submit-row">
+  <button type="submit" class="btn-submit" id="btnSubmit">Submit Assessment</button>
+  <button type="button" class="btn-draft" id="btnDraft">Save Draft</button>
+</div>
+
+</form>
+
+<div class="toast" id="toast"></div>
+
+<div class="doc-footer">
+  <div>Assessment &mdash; Generated by TAM-Copilot &mdash; &copy; Red Hat, Inc.</div>
+  <div class="branding">RED HAT</div>
+</div>
+
+</div>
+
+<script>
+(function(){
+  var _store = {};
+  function sGet(k){ try { return localStorage.getItem(k); } catch(e) { return _store[k] || null; } }
+  function sSet(k,v){ try { localStorage.setItem(k,v); } catch(e) { _store[k] = v; } }
+
+  var form = document.getElementById('assessmentForm');
+  var draftKey = 'assessment_draft_' + location.pathname;
+  var totalQ = document.querySelectorAll('.question-card').length;
+  var progressFill = document.getElementById('progressFill');
+  var progressLabel = document.getElementById('progressLabel');
+  var toast = document.getElementById('toast');
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.className = 'toast show';
+    setTimeout(function(){ toast.className = 'toast'; }, 3200);
+  }
+
+  function updateProgress() {
+    var answered = 0;
+    document.querySelectorAll('.question-card').forEach(function(card){
+      var qid = card.dataset.qid;
+      var ta = card.querySelector('textarea[name="'+qid+'"]');
+      if (ta && ta.value.trim()) { answered++; return; }
+      var radio = card.querySelector('input[type="radio"][name="'+qid+'"]:checked');
+      if (radio) { answered++; return; }
+      var cbs = card.querySelectorAll('input[type="checkbox"][name="'+qid+'"]:checked');
+      if (cbs.length > 0) { answered++; return; }
+      var hidden = card.querySelector('input[type="hidden"][name="'+qid+'"]');
+      if (hidden && hidden.value) { answered++; return; }
+    });
+    var pct = totalQ > 0 ? Math.round((answered / totalQ) * 100) : 0;
+    progressFill.style.width = pct + '%';
+    progressLabel.textContent = answered + ' / ' + totalQ;
+  }
+
+  // Rating stars
+  document.querySelectorAll('.stars').forEach(function(container){
+    var name = container.dataset.name;
+    var hidden = form.querySelector('input[type="hidden"][name="'+name+'"]');
+    container.querySelectorAll('.star').forEach(function(star){
+      star.addEventListener('click', function(){
+        container.querySelectorAll('.star').forEach(function(s){ s.classList.remove('selected'); });
+        star.classList.add('selected');
+        if (hidden) hidden.value = star.dataset.val;
+        updateProgress();
+      });
+    });
+  });
+
+  // Track changes
+  form.addEventListener('input', updateProgress);
+  form.addEventListener('change', updateProgress);
+
+  // Draft save
+  function saveDraft() {
+    var data = {};
+    new FormData(form).forEach(function(v, k){ data[k] = v; });
+    sSet(draftKey, JSON.stringify(data));
+    showToast('Draft saved');
+  }
+
+  function loadDraft() {
+    var raw = sGet(draftKey);
+    if (!raw) return;
+    try {
+      var data = JSON.parse(raw);
+      Object.keys(data).forEach(function(k){
+        var el = form.querySelector('[name="'+k+'"]');
+        if (!el) return;
+        if (el.type === 'textarea' || el.type === 'text' || el.type === 'hidden') {
+          el.value = data[k];
+        } else if (el.type === 'radio') {
+          var r = form.querySelector('input[name="'+k+'"][value="'+data[k]+'"]');
+          if (r) r.checked = true;
+        } else if (el.type === 'checkbox') {
+          var vals = Array.isArray(data[k]) ? data[k] : [data[k]];
+          vals.forEach(function(v){
+            var c = form.querySelector('input[name="'+k+'"][value="'+v+'"]');
+            if (c) c.checked = true;
+          });
+        }
+        if (el.type === 'hidden' && data[k]) {
+          var stars = form.querySelector('.stars[data-name="'+k+'"]');
+          if (stars) {
+            var s = stars.querySelector('.star[data-val="'+data[k]+'"]');
+            if (s) s.classList.add('selected');
+          }
+        }
+      });
+      updateProgress();
+    } catch(e){}
+  }
+
+  document.getElementById('btnDraft').addEventListener('click', saveDraft);
+
+  // Submit
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = document.getElementById('respondentName').value.trim();
+    if (!name) { showToast('Please enter your name'); return; }
+
+    var responses = {};
+    new FormData(form).forEach(function(v, k){
+      if (k.startsWith('_')) return;
+      if (responses[k]) {
+        if (!Array.isArray(responses[k])) responses[k] = [responses[k]];
+        responses[k].push(v);
+      } else {
+        responses[k] = v;
+      }
+    });
+
+    var params = new URLSearchParams(location.search);
+    var token = params.get('token') || '';
+
+    var btn = document.getElementById('btnSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    var guideId = location.pathname.split('/guides/')[1];
+    if (guideId) guideId = guideId.split('/')[0];
+
+    var apiUrl = location.origin + '/api/public/guides/' + guideId + '/respond?token=' + encodeURIComponent(token);
+
+    fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ respondent_name: name, responses: responses })
+    })
+    .then(function(r){
+      if (!r.ok) throw new Error('Status ' + r.status);
+      return r.json();
+    })
+    .then(function(){
+      showToast('Assessment submitted successfully!');
+      btn.textContent = 'Submitted';
+      try { localStorage.removeItem(draftKey); } catch(e){}
+    })
+    .catch(function(err){
+      showToast('Submission failed: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Submit Assessment';
+    });
+  });
+
+  loadDraft();
+  updateProgress();
+})();
+</script>
+</body>
+</html>

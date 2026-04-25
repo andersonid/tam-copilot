@@ -31,6 +31,8 @@ DOCUMENT_TYPES = [
     ("Architecture Review", "#6753AC"),
     ("Migration Guide", "#009596"),
     ("KCS Article", "#8B0000"),
+    ("Project Schedule", "#4394E5"),
+    ("Assessment", "#A855F7"),
 ]
 
 

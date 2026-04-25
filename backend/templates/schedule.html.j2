@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ data.title | default("Project Schedule") }}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;900&family=Red+Hat+Text:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --rh-red: #EE0000;
+  --rh-red-dark: #A30000;
+  --rh-red-10: rgba(238,0,0,0.06);
+  --rh-black: #151515;
+  --rh-gray-95: #151515;
+  --rh-gray-900: #1F1F1F;
+  --rh-gray-700: #3C3F42;
+  --rh-gray-500: #6A6E73;
+  --rh-gray-300: #D2D2D2;
+  --rh-gray-100: #F0F0F0;
+  --rh-white: #FFFFFF;
+  --rh-blue: #0066CC;
+  --rh-green: #3E8635;
+  --rh-green-dark: #1E4F18;
+  --rh-orange: #EC7A08;
+  --rh-purple: #6753AC;
+  --rh-teal: #009596;
+  --danger: #C9190B;
+  --surface: var(--rh-white);
+  --surface2: #f5f5f5;
+  --border: var(--rh-gray-300);
+  --text: var(--rh-gray-900);
+  --text-light: var(--rh-gray-700);
+  --text-dim: var(--rh-gray-500);
+  --blue-light: #E0F0FF;
+  --green-light: #E9F7DF;
+  --orange-light: #FFE8CC;
+  --purple-light: #EDE5FF;
+  --teal-light: #DAF2F2;
+  --danger-light: #FCE3E1;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--rh-gray-100);
+  line-height: 1.6;
+}
+
+.top-bar {
+  background: var(--rh-gray-95);
+  color: var(--rh-white);
+  padding: 12px 40px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-bar .divider { width: 1px; height: 20px; background: rgba(255,255,255,0.25); }
+.top-bar .nav-label { font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 500; }
+
+.hero {
+  background: linear-gradient(135deg, var(--rh-gray-95) 0%, #1a1a2e 50%, #16213e 100%);
+  color: var(--rh-white);
+  padding: 60px 40px 50px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  top: -50%; right: -10%;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(238,0,0,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.hero .tag {
+  display: inline-block;
+  background: rgba(238,0,0,0.25);
+  border: 1px solid rgba(238,0,0,0.5);
+  color: #ff6b6b;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 3px;
+  margin-bottom: 20px;
+}
+.hero h1 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 900; font-size: 38px; line-height: 1.15;
+  margin-bottom: 12px; position: relative; z-index: 1;
+}
+.hero .subtitle {
+  font-size: 17px; color: rgba(255,255,255,0.7);
+  font-weight: 400; max-width: 720px;
+  position: relative; z-index: 1;
+}
+.hero .meta-row {
+  display: flex; gap: 32px; margin-top: 28px;
+  flex-wrap: wrap; position: relative; z-index: 1;
+}
+.hero .meta-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.6); }
+.hero .meta-item strong { color: rgba(255,255,255,0.9); }
+
+.schedule-container { max-width: 1100px; margin: 0 auto; padding: 32px 40px 60px; }
+
+.part-divider {
+  display: flex; align-items: center; gap: 16px;
+  margin: 40px 0 24px;
+}
+.part-divider .part-tag {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--rh-white); background: var(--rh-red);
+  padding: 4px 12px; border-radius: 3px; white-space: nowrap;
+}
+.part-divider h2 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 22px; color: var(--text);
+  margin: 0; padding: 0; border: none;
+}
+.part-divider::after { content: ''; flex: 1; height: 2px; background: var(--border); }
+
+/* Scope Cards */
+.scope-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px; margin: 16px 0;
+}
+.scope-card { padding: 20px; border-radius: 6px; border: 1px solid var(--border); }
+.scope-card h4 { font-family: 'Red Hat Display', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.scope-card ul { padding-left: 18px; }
+.scope-card li { font-size: 13px; margin-bottom: 4px; color: var(--text-light); }
+.scope-card.in-scope { background: var(--green-light); border-color: var(--rh-green); }
+.scope-card.in-scope h4 { color: var(--rh-green-dark); }
+.scope-card.out-scope { background: var(--danger-light); border-color: var(--danger); }
+.scope-card.out-scope h4 { color: var(--danger); }
+.scope-card.to-validate { background: var(--orange-light); border-color: var(--rh-orange); }
+.scope-card.to-validate h4 { color: #b36b00; }
+
+/* Stakeholder Grid */
+.people-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px; margin-top: 12px;
+}
+.person {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.person .avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 14px; color: var(--rh-white); flex-shrink: 0;
+}
+.person .avatar.rh { background: var(--rh-red); }
+.person .avatar.customer { background: var(--rh-purple); }
+.person .avatar.vendor { background: var(--rh-teal); }
+.person .info { font-size: 13px; }
+.person .info .name { font-weight: 700; color: var(--text); }
+.person .info .role { color: var(--text-dim); font-size: 12px; }
+
+/* Phase Blocks */
+.phase-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.phase-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.phase-num {
+  font-family: 'Red Hat Mono', monospace;
+  font-weight: 700; font-size: 13px;
+  color: var(--rh-white);
+  min-width: 36px; height: 36px; padding: 0 10px;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background: var(--rh-red);
+}
+.phase-header h3 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 18px; color: var(--text);
+  flex: 1; margin: 0;
+}
+.phase-owner {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 3px 10px; border-radius: 3px;
+  white-space: nowrap;
+}
+.owner-rh { background: var(--rh-red-10); color: var(--rh-red-dark); border: 1px solid var(--rh-red); }
+.owner-customer { background: var(--purple-light); color: var(--rh-purple); border: 1px solid var(--rh-purple); }
+.owner-vendor { background: var(--teal-light); color: var(--rh-teal); border: 1px solid var(--rh-teal); }
+
+/* Gantt Table */
+table.gantt { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.gantt th {
+  background: var(--surface2);
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-dim);
+  padding: 10px 14px; text-align: left;
+  border-bottom: 2px solid var(--border);
+}
+table.gantt td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+table.gantt tr:last-child td { border-bottom: none; }
+table.gantt tr:hover { background: var(--surface2); }
+table.gantt td:first-child {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-dim); width: 40px; text-align: center;
+}
+table.gantt .dep {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px; color: var(--text-dim); white-space: nowrap;
+}
+table.gantt .detail {
+  display: block; margin-top: 4px;
+  font-size: 12.5px; color: var(--text-dim); line-height: 1.5;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 3px;
+}
+.badge-pending { background: var(--orange-light); color: #96690c; border: 1px solid var(--rh-orange); }
+.badge-blocked { background: var(--danger-light); color: var(--rh-red-dark); border: 1px solid var(--danger); }
+.badge-done { background: var(--green-light); color: var(--rh-green); border: 1px solid var(--rh-green); }
+.badge-info { background: var(--blue-light); color: var(--rh-blue); border: 1px solid var(--rh-blue); }
+
+/* Risks */
+.risk-table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 16px 0; }
+.risk-table th {
+  background: var(--rh-gray-95); color: var(--rh-white);
+  padding: 10px 14px; text-align: left;
+  font-family: 'Red Hat Display', sans-serif; font-weight: 600;
+}
+.risk-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.risk-table tr:nth-child(even) { background: var(--surface2); }
+
+/* Mermaid */
+.mermaid-container { background: var(--rh-white); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; overflow-x: auto; }
+
+/* Critical Path */
+.critical-path {
+  background: var(--danger-light);
+  border: 1px solid var(--danger);
+  border-left: 4px solid var(--danger);
+  border-radius: 6px;
+  padding: 18px 22px;
+  margin: 16px 0;
+  font-size: 14px;
+}
+.critical-path h3 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 14px; font-weight: 700;
+  color: var(--danger); margin: 0 0 8px;
+}
+
+/* Footer */
+.doc-footer {
+  background: var(--rh-gray-95);
+  color: #a3a3a3;
+  padding: 24px 40px;
+  margin-top: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+.doc-footer .author-info { display: flex; flex-direction: column; gap: 2px; }
+.doc-footer .author-name { color: var(--rh-white); font-weight: 600; font-size: 0.8rem; }
+.doc-footer .branding {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 900; color: var(--rh-red); font-size: 0.85rem;
+}
+
+.fab-print {
+  position: fixed; bottom: 24px; right: 24px;
+  z-index: 50; border: none;
+  padding: 12px 20px; border-radius: 6px;
+  font-family: 'Red Hat Text', sans-serif;
+  font-weight: 700; font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  background: var(--rh-red); color: var(--rh-white);
+  transition: background 0.2s;
+}
+.fab-print:hover { background: var(--rh-red-dark); }
+
+@media (max-width: 768px) {
+  .hero { padding: 40px 20px 30px; }
+  .schedule-container { padding: 20px; }
+  .scope-grid { grid-template-columns: 1fr !important; }
+  .people-grid { grid-template-columns: 1fr; }
+  .doc-footer { flex-direction: column; gap: 12px; text-align: center; }
+}
+
+@media print {
+  .top-bar { position: static; }
+  .fab-print { display: none; }
+  body { background: white; }
+  .phase-block { break-inside: avoid; }
+}
+</style>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: {
+  fontFamily: "'Red Hat Text', sans-serif", fontSize: '13px',
+  primaryColor: '#e8e8e8', primaryTextColor: '#292929', primaryBorderColor: '#b0b0b0',
+  todayLineColor: '#ee0000'
+}});
+</script>
+</head>
+<body>
+
+<div class="top-bar">
+  <img src="https://static.redhat.com/libs/redhat/brand-assets/2/corp/logo--on-dark.svg" alt="Red Hat" height="32">
+  <div class="divider"></div>
+  <div class="nav-label">{{ data.title | default("Project Schedule") }}</div>
+  {% if data.get('meta', {}).get('customer') %}
+  <div class="divider"></div>
+  <div class="nav-label">{{ data.meta.customer }}</div>
+  {% endif %}
+</div>
+
+<div class="hero">
+  <div class="tag">{{ data.get('meta', {}).get('doc_type_label', 'PROJECT SCHEDULE') }}</div>
+  <h1>{{ data.title }}</h1>
+  {% if data.get('subtitle') %}
+  <p class="subtitle">{{ data.subtitle }}</p>
+  {% endif %}
+  {% set meta = data.get('meta', {}) %}
+  {% if meta %}
+  <div class="meta-row">
+    {% if meta.get('customer') %}<div class="meta-item"><strong>Customer:</strong> {{ meta.customer }}</div>{% endif %}
+    {% if meta.get('product') %}<div class="meta-item"><strong>Product:</strong> {{ meta.product }}</div>{% endif %}
+    {% if meta.get('environment') %}<div class="meta-item"><strong>Environment:</strong> {{ meta.environment }}</div>{% endif %}
+    {% if meta.get('date') %}<div class="meta-item"><strong>Date:</strong> {{ meta.date }}</div>{% endif %}
+    {% if meta.get('author') %}<div class="meta-item"><strong>Author:</strong> {{ meta.author }}</div>{% endif %}
+    {% for kv in meta.get('extra', []) %}
+    <div class="meta-item"><strong>{{ kv.key }}:</strong> {{ kv.value }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="schedule-container">
+
+{% if data.get('scope') %}
+<div class="part-divider">
+  <div class="part-tag">SCOPE</div>
+  <h2>Project Scope</h2>
+</div>
+<div class="scope-grid">
+  {% if data.scope.get('in_scope') %}
+  <div class="scope-card in-scope">
+    <h4>In Scope</h4>
+    <ul>{% for i in data.scope.in_scope %}<li>{{ i }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if data.scope.get('out_of_scope') %}
+  <div class="scope-card out-scope">
+    <h4>Out of Scope</h4>
+    <ul>{% for i in data.scope.out_of_scope %}<li>{{ i }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if data.scope.get('to_validate') %}
+  <div class="scope-card to-validate">
+    <h4>To Validate</h4>
+    <ul>{% for i in data.scope.to_validate %}<li>{{ i }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if data.get('stakeholders') %}
+<div class="part-divider">
+  <div class="part-tag">TEAM</div>
+  <h2>Stakeholders</h2>
+</div>
+<div class="people-grid">
+  {% for p in data.stakeholders %}
+  <div class="person">
+    <div class="avatar {{ p.get('org', 'rh') }}">{{ p.name[:2] | upper }}</div>
+    <div class="info">
+      <div class="name">{{ p.name }}</div>
+      <div class="role">{{ p.get('role', '') }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if data.get('gantt_mermaid') %}
+<div class="part-divider">
+  <div class="part-tag">GANTT</div>
+  <h2>Timeline Overview</h2>
+</div>
+<div class="mermaid-container">
+  <div class="mermaid">{{ data.gantt_mermaid }}</div>
+</div>
+{% endif %}
+
+{% if data.get('phases') %}
+<div class="part-divider">
+  <div class="part-tag">PHASES</div>
+  <h2>Activity Plan</h2>
+</div>
+
+{% for phase in data.phases %}
+<div class="phase-block">
+  <div class="phase-header">
+    <div class="phase-num">{{ phase.get('id', 'F' ~ loop.index0) }}</div>
+    <h3>{{ phase.title }}</h3>
+    {% if phase.get('owner') %}
+    <span class="phase-owner owner-{{ phase.get('owner_type', 'rh') }}">{{ phase.owner }}</span>
+    {% endif %}
+  </div>
+  {% if phase.get('activities') %}
+  <table class="gantt">
+    <thead>
+      <tr><th>#</th><th>Activity</th><th>Owner</th><th>Dep.</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for act in phase.activities %}
+      <tr>
+        <td>{{ act.get('num', loop.index) }}</td>
+        <td>
+          {{ act.title }}
+          {% if act.get('detail') %}<span class="detail">{{ act.detail }}</span>{% endif %}
+        </td>
+        <td>{{ act.get('owner', '—') }}</td>
+        <td><span class="dep">{{ act.get('dependency', '—') }}</span></td>
+        <td>
+          {% set st = act.get('status', 'pending') %}
+          <span class="badge badge-{{ st }}">{{ st }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
+{% if data.get('critical_path') %}
+<div class="critical-path">
+  <h3>Critical Path</h3>
+  <p>{{ data.critical_path }}</p>
+</div>
+{% endif %}
+
+{% if data.get('risks') %}
+<div class="part-divider">
+  <div class="part-tag">RISKS</div>
+  <h2>Risk Assessment</h2>
+</div>
+<table class="risk-table">
+  <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    {% for r in data.risks %}
+    <tr><td>{{ r.risk }}</td><td>{{ r.mitigation }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="doc-footer">
+  <div class="author-info">
+    {% if data.get('meta', {}).get('author') %}
+    <span class="author-name">{{ data.meta.author }}</span>
+    {% endif %}
+    {% if not data.get('meta', {}).get('author') %}
+    <span>Generated by TAM-Copilot</span>
+    {% endif %}
+  </div>
+  <div class="branding">RED HAT</div>
+</div>
+
+</div>
+
+<button class="fab-print" onclick="window.print()">Print / PDF</button>
+</body>
+</html>

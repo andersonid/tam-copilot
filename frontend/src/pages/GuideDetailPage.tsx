@@ -25,6 +25,7 @@ import {
   CodeBlock,
   CodeBlockCode,
   Icon,
+  ExpandableSection,
 } from "@patternfly/react-core";
 import {
   ExternalLinkAltIcon,
@@ -35,9 +36,18 @@ import {
   KeyIcon,
   SyncAltIcon,
   LinkIcon,
+  DownloadIcon,
 } from "@patternfly/react-icons";
 import api from "../services/api";
 import type { Guide } from "../types/models";
+
+interface AssessmentResponse {
+  id: number;
+  guide_id: number;
+  respondent_name: string;
+  responses_json: string;
+  submitted_at: string;
+}
 
 interface LlmErrorDetail {
   summary: string;
@@ -60,6 +70,60 @@ export function GuideDetailPage() {
   const [llmError, setLlmError] = useState<LlmErrorDetail | null>(null);
   const [tokenInfo, setTokenInfo] = useState<{ access_token: string; public_url: string } | null>(null);
   const [rotatingToken, setRotatingToken] = useState(false);
+  const [assessmentResponses, setAssessmentResponses] = useState<AssessmentResponse[]>([]);
+  const [responsesLoading, setResponsesLoading] = useState(false);
+
+  const loadResponses = () => {
+    setResponsesLoading(true);
+    api
+      .get(`/guides/${id}/responses`)
+      .then((r) => setAssessmentResponses(r.data))
+      .catch(() => {})
+      .finally(() => setResponsesLoading(false));
+  };
+
+  const exportResponses = (format: "json" | "csv") => {
+    const parsed = assessmentResponses.map((r) => ({
+      id: r.id,
+      respondent: r.respondent_name,
+      submitted_at: r.submitted_at,
+      ...JSON.parse(r.responses_json),
+    }));
+
+    let content: string;
+    let mime: string;
+    let ext: string;
+
+    if (format === "json") {
+      content = JSON.stringify(parsed, null, 2);
+      mime = "application/json";
+      ext = "json";
+    } else {
+      const keys = new Set<string>();
+      parsed.forEach((r) => Object.keys(r).forEach((k) => keys.add(k)));
+      const headers = Array.from(keys);
+      const rows = parsed.map((r) =>
+        headers.map((h) => {
+          const v = (r as Record<string, unknown>)[h];
+          const s = v == null ? "" : String(v);
+          return s.includes(",") || s.includes('"') || s.includes("\n")
+            ? `"${s.replace(/"/g, '""')}"`
+            : s;
+        })
+      );
+      content = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      mime = "text/csv";
+      ext = "csv";
+    }
+
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `assessment-responses-${id}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const load = () => {
     setError("");
@@ -82,6 +146,7 @@ export function GuideDetailPage() {
   useEffect(() => {
     load();
     loadToken();
+    loadResponses();
   }, [id]);
 
   const handleDelete = async () => {
@@ -327,6 +392,72 @@ export function GuideDetailPage() {
           </DescriptionListDescription>
         </DescriptionListGroup>
       </DescriptionList>
+
+      {guide.document_type?.slug === "assessment" && (
+        <div style={{ marginTop: 32 }}>
+          <Split hasGutter>
+            <SplitItem isFilled>
+              <Title headingLevel="h2" size="xl">
+                Assessment Responses ({assessmentResponses.length})
+              </Title>
+            </SplitItem>
+            <SplitItem>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<DownloadIcon />}
+                onClick={() => exportResponses("csv")}
+                isDisabled={assessmentResponses.length === 0}
+                style={{ marginRight: 8 }}
+              >
+                Export CSV
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<DownloadIcon />}
+                onClick={() => exportResponses("json")}
+                isDisabled={assessmentResponses.length === 0}
+              >
+                Export JSON
+              </Button>
+            </SplitItem>
+          </Split>
+
+          {responsesLoading && <Spinner size="md" aria-label="Loading responses" style={{ marginTop: 16 }} />}
+
+          {!responsesLoading && assessmentResponses.length === 0 && (
+            <Alert variant="info" title="No responses yet" isInline style={{ marginTop: 16 }}>
+              Share the public link with the access token so clients can submit their answers.
+            </Alert>
+          )}
+
+          {assessmentResponses.map((resp) => {
+            let parsed: Record<string, unknown> = {};
+            try {
+              parsed = JSON.parse(resp.responses_json);
+            } catch { /* ignore */ }
+            return (
+              <ExpandableSection
+                key={resp.id}
+                toggleText={`${resp.respondent_name} — ${new Date(resp.submitted_at).toLocaleString()}`}
+                style={{ marginTop: 12, background: "#f5f5f5", borderRadius: 6, padding: "4px 12px" }}
+              >
+                <DescriptionList isHorizontal style={{ marginTop: 8 }}>
+                  {Object.entries(parsed).map(([key, val]) => (
+                    <DescriptionListGroup key={key}>
+                      <DescriptionListTerm>{key}</DescriptionListTerm>
+                      <DescriptionListDescription>
+                        {Array.isArray(val) ? val.join(", ") : String(val ?? "—")}
+                      </DescriptionListDescription>
+                    </DescriptionListGroup>
+                  ))}
+                </DescriptionList>
+              </ExpandableSection>
+            );
+          })}
+        </div>
+      )}
 
       {llmError && (
         <Modal

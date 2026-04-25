@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAM-Copilot — Component Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;900&family=Red+Hat+Text:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --white: #ffffff;
+  --bg: #f2f2f2;
+  --surface: #ffffff;
+  --surface2: #f5f5f5;
+  --border: #e0e0e0;
+  --border-bright: #c7c7c7;
+  --text: #292929;
+  --text-dim: #707070;
+  --text-light: #4d4d4d;
+  --gray-95: #151515;
+  --rh-red: #ee0000;
+  --rh-red-light: #fef0f0;
+  --rh-red-10: #fce3e3;
+  --rh-red-20: #fbc5c5;
+  --rh-red-dark: #a60000;
+  --blue: #0066cc;
+  --blue-light: #e0f0ff;
+  --blue-dark: #004d99;
+  --green: #63993d;
+  --green-light: #e9f7df;
+  --green-dark: #3d7317;
+  --danger: #f0561d;
+  --danger-light: #ffe3d9;
+  --orange: #f5921b;
+  --orange-light: #ffe8cc;
+  --teal: #147878;
+  --teal-light: #daf2f2;
+  --purple: #6753ac;
+  --purple-light: #f2f0fc;
+  --rh-cyan: #009596;
+  --rh-cyan-light: #f2f9f9;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.6;
+}
+
+.inv-header {
+  background: var(--gray-95);
+  color: var(--white);
+  padding: 40px;
+  text-align: center;
+}
+.inv-header h1 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 900;
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+.inv-header p { color: rgba(255,255,255,0.6); font-size: 15px; }
+.inv-header .stats {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 13px;
+}
+.inv-header .stats .stat-val { color: var(--rh-red); font-weight: 700; font-size: 20px; }
+
+.inv-nav {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 40px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.inv-nav a {
+  font-size: 12px;
+  font-family: 'Red Hat Mono', monospace;
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+.inv-nav a:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
+
+.inv-container { max-width: 1300px; margin: 0 auto; padding: 32px 40px 100px; }
+
+.category {
+  margin-bottom: 48px;
+  scroll-margin-top: 60px;
+}
+.category-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--text);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  border-bottom: 3px solid var(--rh-red);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.category-title .cat-num {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--rh-red);
+  color: var(--white);
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.variant-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.variant-group.single { grid-template-columns: 1fr; }
+
+.variant-card {
+  background: var(--white);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.variant-card.selected {
+  border-color: var(--rh-red);
+  box-shadow: 0 0 0 2px rgba(238,0,0,0.15);
+}
+.variant-card-header {
+  background: var(--surface2);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.variant-card-header label {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.variant-card-header .source-tag {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: var(--purple-light);
+  color: var(--purple);
+}
+.variant-card-body {
+  padding: 0;
+  overflow: hidden;
+}
+.variant-card-body .preview {
+  padding: 20px;
+  overflow: hidden;
+}
+
+input[type="radio"], input[type="checkbox"] {
+  accent-color: var(--rh-red);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.fab-group {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 300;
+}
+.fab-btn {
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-family: 'Red Hat Text', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  transition: transform 0.1s, background 0.2s;
+}
+.fab-btn:hover { transform: translateY(-1px); }
+.fab-export { background: var(--rh-red); color: var(--white); }
+.fab-export:hover { background: var(--rh-red-dark); }
+.fab-reset { background: var(--gray-95); color: var(--white); }
+.fab-reset:hover { background: var(--text-light); }
+
+.toast {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  background: var(--gray-95);
+  color: var(--white);
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 400;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ================================================
+   COMPONENT PREVIEW STYLES (scoped per variant)
+   ================================================ */
+
+/* --- SHARED: Top Bar --- */
+.demo-topbar {
+  background: #151515;
+  color: #fff;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-radius: 4px;
+}
+.demo-topbar .divider { width: 1px; height: 20px; background: rgba(255,255,255,0.25); }
+.demo-topbar .nav-label { font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 500; }
+
+/* --- HERO A: Gradient (altaia/cronograma) --- */
+.demo-hero-a {
+  background: linear-gradient(135deg, #151515 0%, #1a1a2e 50%, #16213e 100%);
+  color: #fff;
+  padding: 40px 30px 35px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.demo-hero-a::after {
+  content: '';
+  position: absolute;
+  top: -50%; right: -10%;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(238,0,0,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.demo-hero-a .tag {
+  display: inline-block;
+  background: rgba(238,0,0,0.25);
+  border: 1px solid rgba(238,0,0,0.5);
+  color: #ff6b6b;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 3px;
+  margin-bottom: 16px;
+}
+.demo-hero-a h1 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 900; font-size: 30px; line-height: 1.15;
+  margin-bottom: 10px; position: relative; z-index: 1;
+}
+.demo-hero-a h1 span { color: #ee0000; }
+.demo-hero-a .subtitle {
+  font-size: 15px; color: rgba(255,255,255,0.7);
+  font-weight: 400; position: relative; z-index: 1;
+}
+.demo-hero-a .meta-row {
+  display: flex; gap: 24px; margin-top: 20px;
+  flex-wrap: wrap; position: relative; z-index: 1;
+}
+.demo-hero-a .meta-item { font-size: 12px; color: rgba(255,255,255,0.55); }
+.demo-hero-a .meta-item strong { color: rgba(255,255,255,0.85); }
+
+/* --- HERO B: White card (cost-management) --- */
+.demo-hero-b {
+  background: #fff;
+  border-left: 4px solid #ee0000;
+  border-radius: 4px;
+  padding: 28px 32px;
+}
+.demo-hero-b h1 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 24px; font-weight: 700;
+  margin-bottom: 8px; color: #292929;
+}
+.demo-hero-b .subtitle { font-size: 14px; color: #707070; }
+.demo-hero-b .meta {
+  margin-top: 14px;
+  display: flex; gap: 20px; flex-wrap: wrap;
+  font-size: 12px; color: #707070;
+}
+
+/* --- TOC A: White card 2-col (altaia) --- */
+.demo-toc-a {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-left: 4px solid #ee0000;
+  border-radius: 6px;
+  padding: 20px 24px;
+}
+.demo-toc-a h3 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 15px; color: #292929;
+  margin-bottom: 10px;
+}
+.demo-toc-a ol {
+  list-style: none; counter-reset: toc-counter;
+  columns: 2; column-gap: 24px; padding: 0;
+}
+.demo-toc-a ol li {
+  counter-increment: toc-counter;
+  margin-bottom: 5px; break-inside: avoid;
+}
+.demo-toc-a ol li a {
+  color: #0066cc; text-decoration: none;
+  font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 6px;
+}
+.demo-toc-a ol li a:hover { color: #ee0000; }
+.demo-toc-a ol li a::before {
+  content: counter(toc-counter, decimal-leading-zero);
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; color: #707070; min-width: 20px;
+}
+
+/* --- TOC B: Sticky sidebar (cost-management) --- */
+.demo-toc-b {
+  background: #fff;
+  border-radius: 4px;
+  padding: 14px 0;
+  border: 1px solid #e0e0e0;
+}
+.demo-toc-b .toc-title {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px;
+  color: #707070; padding: 0 12px 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #e0e0e0;
+}
+.demo-toc-b a {
+  display: block; font-size: 11px;
+  color: #707070; text-decoration: none;
+  padding: 4px 12px; border-left: 2px solid transparent;
+  margin-bottom: 1px;
+}
+.demo-toc-b a:hover { color: #292929; background: #f5f5f5; }
+.demo-toc-b a.active { color: #292929; border-left-color: #ee0000; }
+
+/* --- PART DIVIDER --- */
+.demo-part-div {
+  display: flex; align-items: center; gap: 14px;
+  margin: 8px 0;
+}
+.demo-part-div .part-tag {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: #fff; background: #ee0000;
+  padding: 4px 12px; border-radius: 3px; white-space: nowrap;
+}
+.demo-part-div h2 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 18px; color: #292929;
+}
+.demo-part-div::after { content: ''; flex: 1; height: 2px; background: #e0e0e0; }
+
+/* --- SECTION HEADER A: Card with circle badge --- */
+.demo-sec-a {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.demo-sec-a .sh {
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 14px 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.demo-sec-a .sh .num {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  color: #fff; background: #ee0000;
+  width: 28px; height: 28px;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+}
+.demo-sec-a .sh h2 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 17px; color: #292929;
+}
+.demo-sec-a .body { padding: 20px; font-size: 13px; color: #4d4d4d; }
+
+/* --- SECTION HEADER B: Inline with square badge --- */
+.demo-sec-b {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 16px; font-weight: 700; color: #292929;
+  padding: 16px 0 10px;
+  border-bottom: 2px solid #ee0000;
+  display: flex; align-items: center; gap: 10px;
+}
+.demo-sec-b .num {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  background: #ee0000; color: #fff;
+  width: 22px; height: 22px; border-radius: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* --- STEP CARD A: altaia style --- */
+.demo-step-a .step {
+  background: #fff; border: 1px solid #e0e0e0;
+  border-radius: 6px; margin-bottom: 12px; overflow: hidden;
+}
+.demo-step-a .step-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px; border-bottom: 1px solid #e0e0e0;
+  background: #f5f5f5;
+}
+.demo-step-a .step-num {
+  font-family: 'Red Hat Mono', monospace;
+  font-weight: 700; font-size: 12px; color: #fff;
+  background: #ee0000;
+  width: 28px; height: 28px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+}
+.demo-step-a .step-header h3 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 15px; color: #292929; flex: 1;
+}
+.demo-step-a .step-header .tag {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; padding: 2px 8px;
+  border-radius: 3px;
+}
+.demo-step-a .tag-scope { background: #f2f0fc; color: #6753ac; }
+.demo-step-a .tag-config { background: #e0f0ff; color: #0066cc; }
+.demo-step-a .step-body { padding: 18px; font-size: 13px; color: #4d4d4d; }
+
+/* --- STEP CARD B: guia-rede color variants --- */
+.demo-step-b .step-card {
+  background: #fff; border: 1px solid #d2d2d2;
+  border-radius: 8px; margin-bottom: 12px; overflow: hidden;
+}
+.demo-step-b .step-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px; border-bottom: 1px solid #d2d2d2;
+  background: #fafafa;
+}
+.demo-step-b .step-num {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px; font-weight: 700; color: #fff;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.demo-step-b .step-num.red { background: #ee0000; }
+.demo-step-b .step-num.verify { background: #009596; }
+.demo-step-b .step-num.test { background: #0066cc; }
+.demo-step-b .step-num.cleanup { background: #6a6e73; }
+.demo-step-b .step-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 15px; font-weight: 600;
+}
+.demo-step-b .step-body { padding: 18px; font-size: 13px; color: #4d4d4d; }
+
+/* --- STEP CARD C: vertical timeline (cost-management) --- */
+.demo-step-c .step-flow { display: flex; flex-direction: column; }
+.demo-step-c .step-item {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 12px 0; border-left: 2px solid #c7c7c7;
+  padding-left: 18px; position: relative;
+}
+.demo-step-c .step-item::before {
+  content: attr(data-step);
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  background: #ee0000; color: #fff;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: absolute; left: -12px;
+}
+.demo-step-c .step-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 600; font-size: 14px; margin-bottom: 2px;
+}
+.demo-step-c .step-text { font-size: 13px; color: #4d4d4d; }
+
+/* --- CALLOUTS A: left border (current base) --- */
+.demo-call-a .card {
+  background: #fff; border-radius: 8px;
+  padding: 16px 20px; margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.demo-call-a .card.info { border-left: 4px solid #0066cc; }
+.demo-call-a .card.warning { border-left: 4px solid #f5921b; background: #FFF8F0; }
+.demo-call-a .card.success { border-left: 4px solid #63993d; background: #F0FAF0; }
+.demo-call-a .card h3 { font-family: 'Red Hat Display', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.demo-call-a .card p { font-size: 13px; color: #4d4d4d; }
+
+/* --- CALLOUTS B: full border (altaia) --- */
+.demo-call-b .callout {
+  padding: 14px 18px; border-radius: 6px; margin-bottom: 10px; font-size: 13px;
+}
+.demo-call-b .callout-info { background: #e0f0ff; border: 1px solid #0066cc; border-left: 4px solid #0066cc; }
+.demo-call-b .callout-warn { background: #ffe8cc; border: 1px solid #f5921b; border-left: 4px solid #f5921b; }
+.demo-call-b .callout-danger { background: #ffe3d9; border-left: 4px solid #f0561d; }
+.demo-call-b .callout-blog { background: #f2f9f9; border: 1px solid #009596; border-left: 4px solid #009596; }
+.demo-call-b .callout strong { color: #292929; }
+
+/* --- CALLOUTS C: background fill (cost-management) --- */
+.demo-call-c .callout {
+  border-radius: 4px; padding: 14px 18px; margin-bottom: 10px; font-size: 13px;
+}
+.demo-call-c .callout-red { background: #fef0f0; border: 1px solid #fbc5c5; }
+.demo-call-c .callout-blue { background: #e0f0ff; border: 1px solid #b3d7ff; }
+.demo-call-c .callout-green { background: #e9f7df; border: 1px solid #c5e8b0; }
+.demo-call-c .callout-orange { background: #ffe8cc; border: 1px solid #ffd699; }
+.demo-call-c .callout-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 13px; margin-bottom: 4px;
+}
+.demo-call-c .callout-red .callout-title { color: #a60000; }
+.demo-call-c .callout-blue .callout-title { color: #004d99; }
+.demo-call-c .callout-green .callout-title { color: #3d7317; }
+.demo-call-c .callout-orange .callout-title { color: #b36b00; }
+
+/* --- CARD-ACCENT D (cost-management) --- */
+.demo-call-d .card {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 4px; padding: 16px 20px; margin-bottom: 10px;
+}
+.demo-call-d .card h3 { font-family: 'Red Hat Display', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.demo-call-d .card p { font-size: 13px; color: #4d4d4d; }
+.demo-call-d .accent-blue { border-left: 3px solid #0066cc; }
+.demo-call-d .accent-orange { border-left: 3px solid #f5921b; }
+.demo-call-d .accent-green { border-left: 3px solid #63993d; }
+.demo-call-d .accent-teal { border-left: 3px solid #147878; }
+.demo-call-d .accent-red { border-left: 3px solid #ee0000; }
+
+/* --- SCOPE CARDS --- */
+.demo-scope .scope-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+.demo-scope .scope-card {
+  padding: 16px; border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+.demo-scope .scope-card h4 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 14px; font-weight: 700; margin-bottom: 8px;
+}
+.demo-scope .scope-card ul { padding-left: 16px; }
+.demo-scope .scope-card li { font-size: 12px; margin-bottom: 3px; color: #4d4d4d; }
+.demo-scope .in { background: #e9f7df; border-color: #63993d; }
+.demo-scope .in h4 { color: #3d7317; }
+.demo-scope .out { background: #ffe3d9; border-color: #f0561d; }
+.demo-scope .out h4 { color: #a60000; }
+.demo-scope .tbd { background: #ffe8cc; border-color: #f5921b; }
+.demo-scope .tbd h4 { color: #96690c; }
+
+/* --- TABLES --- */
+.demo-table table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+/* A: Dark header */
+.demo-table-a th {
+  background: #151515; color: #fff; padding: 8px 12px;
+  text-align: left; font-family: 'Red Hat Display', sans-serif; font-weight: 600; font-size: 12px;
+}
+.demo-table-a td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; }
+.demo-table-a tr:nth-child(even) td { background: #f5f5f5; }
+/* B: Gantt style */
+.demo-table-b th {
+  background: #f5f5f5; color: #707070; padding: 8px 12px;
+  text-align: left; font-family: 'Red Hat Display', sans-serif; font-weight: 700;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  border-bottom: 2px solid #e0e0e0;
+}
+.demo-table-b td { padding: 10px 12px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+.demo-table-b td:first-child {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px; font-weight: 600; color: #707070; width: 36px; text-align: center;
+}
+.demo-table-b .detail { display: block; margin-top: 3px; font-size: 12px; color: #707070; }
+/* C: Checklist table */
+.demo-table-c th {
+  text-align: left; font-family: 'Red Hat Display', sans-serif;
+  font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 8px 10px; background: #fafafa; border-bottom: 2px solid #d2d2d2; color: #707070;
+}
+.demo-table-c td { padding: 8px 10px; border-bottom: 1px solid #e0e0e0; }
+.demo-table-c .status { width: 28px; text-align: center; font-size: 16px; }
+.demo-table-c code {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; background: #1e1e1e; color: #d4d4d4;
+  padding: 2px 6px; border-radius: 3px;
+}
+
+/* --- CODE BLOCKS --- */
+.demo-code pre {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px; line-height: 1.6;
+  padding: 14px 18px; border-radius: 4px;
+  overflow-x: auto; margin: 0;
+}
+.demo-code-a pre { background: #1F1F1F; color: #E0E0E0; border-left: 4px solid #ee0000; }
+.demo-code-b .file-label {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 10px; font-weight: 600; color: #707070;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.demo-code-b pre { background: #151515; color: #e0e0e0; }
+.demo-code-b .key { color: #9cdcfe; }
+.demo-code-b .value { color: #ce9178; }
+.demo-code-b .comment { color: #6a9955; }
+.demo-code-c pre.cmd { background: #1e1e1e; color: #d4d4d4; white-space: pre-wrap; }
+.demo-code-c .comment { color: #6a9955; }
+.demo-code-c .placeholder { color: #f0ab00; font-style: italic; }
+.demo-code-c .expected { color: #4ec9b0; }
+.demo-code-c pre.yaml { background: #1e1e1e; color: #d4d4d4; }
+.demo-code-c .key { color: #9cdcfe; }
+.demo-code-c .val { color: #ce9178; }
+
+/* --- TERMINAL --- */
+.demo-term-a .terminal {
+  background: #151515; color: #00FF00;
+  padding: 14px 18px; border-radius: 6px;
+  font-family: 'Red Hat Mono', monospace; font-size: 12px;
+}
+.demo-term-a .prompt { color: #ee0000; }
+.demo-term-a .cmd { color: #E0E0E0; }
+
+/* --- TIMELINE --- */
+.demo-tl { position: relative; }
+.demo-tl-a .timeline { position: relative; padding-left: 24px; }
+.demo-tl-a .timeline::before {
+  content: ''; position: absolute; left: 6px; top: 4px; bottom: 4px;
+  width: 2px; background: #ee0000;
+}
+.demo-tl-a .tl-item {
+  position: relative; margin-bottom: 14px; padding-left: 14px;
+}
+.demo-tl-a .tl-item::before {
+  content: ''; position: absolute; left: -22px; top: 4px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #ee0000; border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #ee0000;
+}
+.demo-tl-a .date {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; color: #ee0000; font-weight: 700;
+}
+.demo-tl-a .event { font-size: 13px; font-weight: 500; color: #292929; }
+.demo-tl-a .detail { font-size: 12px; color: #707070; }
+
+/* --- METRIC CARDS --- */
+.demo-mc-a .metric-cards {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.demo-mc-a .metric-card {
+  background: #fff; border-radius: 8px; padding: 16px; text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 3px solid #ee0000;
+}
+.demo-mc-a .mc-value {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 28px; font-weight: 900; color: #ee0000;
+}
+.demo-mc-a .mc-label { font-weight: 600; color: #4d4d4d; font-size: 13px; }
+
+/* --- ACCORDION --- */
+.demo-acc details {
+  margin-bottom: 6px; background: #fff; border-radius: 6px;
+  border: 1px solid #e0e0e0; overflow: hidden;
+}
+.demo-acc summary {
+  padding: 10px 14px; cursor: pointer;
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 600; font-size: 13px; list-style: none;
+  background: #f5f5f5; border-bottom: 1px solid #e0e0e0;
+}
+.demo-acc-a summary::before { content: '\25B8'; margin-right: 8px; color: #ee0000; display: inline-block; transition: transform 0.2s; }
+.demo-acc-a details[open] summary::before { transform: rotate(90deg); }
+.demo-acc-b summary { font-size: 14px; border-left: 3px solid #0066cc; }
+.demo-acc .details-body { padding: 12px 16px; font-size: 13px; color: #4d4d4d; }
+
+/* --- CHECKLIST --- */
+.demo-check-a ul { list-style: none; padding: 0; }
+.demo-check-a li { padding: 6px 0 6px 24px; position: relative; font-size: 13px; }
+.demo-check-a li::before { content: '☐'; position: absolute; left: 0; color: #ee0000; font-size: 16px; }
+.demo-check-c ul { list-style: none; padding: 0; }
+.demo-check-c li { padding: 6px 0 6px 28px; position: relative; font-size: 13px; }
+.demo-check-c li input[type="checkbox"] { position: absolute; left: 0; top: 8px; }
+
+/* --- PEOPLE GRID --- */
+.demo-people .people-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+}
+.demo-people .person {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: #f5f5f5;
+  border: 1px solid #e0e0e0; border-radius: 6px;
+}
+.demo-people .avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 13px; color: #fff;
+}
+.demo-people .avatar.rh { background: #ee0000; }
+.demo-people .avatar.tel { background: #6753ac; }
+.demo-people .name { font-weight: 700; font-size: 13px; color: #292929; }
+.demo-people .role { font-size: 11px; color: #707070; }
+
+/* --- QUESTION LIST --- */
+.demo-questions .question-list { list-style: none; padding: 0; counter-reset: q; }
+.demo-questions .question-list li {
+  counter-increment: q;
+  padding: 12px 14px 12px 44px;
+  margin-bottom: 8px; background: #f5f5f5;
+  border: 1px solid #e0e0e0; border-left: 3px solid #ee0000;
+  border-radius: 4px; position: relative; font-size: 13px;
+}
+.demo-questions .question-list li::before {
+  content: 'Q' counter(q);
+  position: absolute; left: 12px; top: 12px;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700; color: #ee0000;
+}
+.demo-questions textarea {
+  display: block; width: 100%; margin-top: 8px;
+  padding: 8px 10px; font-family: 'Red Hat Text', sans-serif;
+  font-size: 12px; border: 1px solid #e0e0e0; border-radius: 4px;
+  resize: vertical; min-height: 50px;
+}
+
+/* --- BADGES --- */
+.demo-badges .badge {
+  display: inline-block;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 3px; margin-right: 6px;
+}
+.demo-badges .badge-done { background: #e9f7df; color: #63993d; border: 1px solid #63993d; }
+.demo-badges .badge-blocked { background: #ffe8cc; color: #96690c; border: 1px solid #f5921b; }
+.demo-badges .badge-info { background: #e0f0ff; color: #0066cc; border: 1px solid #0066cc; }
+.demo-badges .badge-critical { background: #fce3e3; color: #a60000; border: 1px solid #ee0000; }
+.demo-badges .badge-pending { background: #ffe8cc; color: #96690c; border: 1px solid #f5921b; }
+.demo-badges .badge-new { background: #f2f0fc; color: #6753ac; border: 1px solid #6753ac; }
+
+/* --- TAGS --- */
+.demo-tags .tag {
+  display: inline-block;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; padding: 2px 8px;
+  border-radius: 3px; margin-right: 4px;
+}
+.demo-tags .tag-scope { background: #f2f0fc; color: #6753ac; }
+.demo-tags .tag-config { background: #e0f0ff; color: #0066cc; }
+.demo-tags .tag-verify { background: #ffe8cc; color: #f5921b; }
+.demo-tags .tag-node { background: #daf2f2; color: #147878; }
+.demo-tags .tag-pod { background: #e9f7df; color: #63993d; }
+.demo-tags .tag-red { background: #fce3e3; color: #a60000; }
+
+/* --- FORMULA BOX --- */
+.demo-formula .formula-box {
+  background: #daf2f2; border: 1px solid #b0e0e0;
+  border-radius: 4px; padding: 14px 18px;
+  font-family: 'Red Hat Mono', monospace; font-size: 12px; line-height: 1.7;
+}
+.demo-formula .formula-box .label {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 13px; color: #147878; margin-bottom: 6px;
+}
+
+/* --- REF LIST --- */
+.demo-refs .ref-list { list-style: none; padding: 0; }
+.demo-refs .ref-list li {
+  padding: 8px 10px; border-bottom: 1px solid #e0e0e0;
+  font-size: 13px; display: flex; align-items: flex-start; gap: 8px;
+}
+.demo-refs .ref-list li::before { content: "→"; color: #ee0000; font-weight: 700; }
+
+/* --- TROUBLESHOOT PANEL --- */
+.demo-trouble .troubleshoot {
+  background: #fff; border: 1px solid #c9190b;
+  border-radius: 8px; padding: 14px 18px;
+}
+.demo-trouble .troubleshoot h3 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 14px; font-weight: 700; color: #c9190b; margin-bottom: 10px;
+}
+.demo-trouble dt { font-weight: 600; margin-top: 8px; font-size: 13px; }
+.demo-trouble dd { margin-left: 0; color: #707070; font-size: 12px; }
+
+/* --- PREREQ / DATA GRID --- */
+.demo-prereq .prereq-box {
+  background: #fff4ce; border: 1px solid #f0ab00;
+  border-radius: 8px; padding: 16px 20px;
+}
+.demo-prereq .prereq-box h2 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 15px; font-weight: 700; color: #96690c; margin-bottom: 10px;
+}
+.demo-prereq .data-grid {
+  display: grid; grid-template-columns: 160px 1fr; gap: 4px 14px; font-size: 12px;
+}
+.demo-prereq .dg-label { font-weight: 600; color: #96690c; }
+.demo-prereq .dg-value { font-family: 'Red Hat Mono', monospace; color: #292929; }
+.demo-prereq .dg-placeholder { color: #ee0000; font-style: italic; }
+
+/* --- FOOTER --- */
+.demo-footer-a {
+  text-align: center; padding: 16px; font-size: 12px;
+  color: #707070; border-top: 1px solid #e0e0e0;
+}
+.demo-footer-b {
+  background: #151515; color: #a3a3a3;
+  text-align: center; padding: 16px; font-size: 12px;
+  border-radius: 4px;
+}
+.demo-footer-b a { color: #c7c7c7; text-decoration: none; }
+
+/* --- PHASE BLOCK (cronograma) --- */
+.demo-phase .phase-block {
+  border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;
+}
+.demo-phase .phase-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px; border-bottom: 1px solid #e0e0e0;
+}
+.demo-phase .phase-num {
+  font-family: 'Red Hat Mono', monospace;
+  font-weight: 700; font-size: 12px; color: #fff;
+  width: 32px; height: 32px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+}
+.demo-phase .phase-header h3 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-weight: 700; font-size: 15px; color: #292929; flex: 1;
+}
+.demo-phase .phase-owner {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 3px;
+}
+.demo-phase .owner-rh { background: #fce3e3; color: #a60000; border: 1px solid #ee0000; }
+.demo-phase .owner-tel { background: #f2f0fc; color: #6753ac; border: 1px solid #6753ac; }
+.demo-phase .phase-body { padding: 14px 18px; font-size: 13px; color: #4d4d4d; }
+
+/* --- FLOW / FLOWCHART --- */
+.demo-flow .flow {
+  display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap;
+}
+.demo-flow .flow-box {
+  background: #fff; border: 1px solid #e0e0e0;
+  border-radius: 4px; padding: 10px 16px;
+  font-size: 12px; font-weight: 600; text-align: center; min-width: 100px;
+}
+.demo-flow .flow-box.highlight { border-color: #ee0000; background: #fef0f0; }
+.demo-flow .flow-box.alt { border-color: #0066cc; background: #e0f0ff; }
+.demo-flow .flow-arrow {
+  font-family: 'Red Hat Mono', monospace;
+  color: #707070; padding: 0 6px; font-size: 16px;
+}
+
+/* --- CRITICAL PATH --- */
+.demo-crit .critical-path {
+  background: linear-gradient(90deg, #fef0f0 0%, #ffe8cc 100%);
+  border: 1px solid #f5921b; border-left: 4px solid #ee0000;
+  padding: 14px 18px; border-radius: 6px; font-size: 13px;
+}
+
+/* --- OWNER LEGEND --- */
+.demo-legend .owner-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.demo-legend .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+.demo-legend .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+@media (max-width: 768px) {
+  .variant-group { grid-template-columns: 1fr; }
+  .demo-scope .scope-grid { grid-template-columns: 1fr; }
+  .demo-mc-a .metric-cards { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="inv-header">
+  <h1>TAM-Copilot Component Inventory</h1>
+  <p>Compare, select, and export component choices for template upgrades</p>
+  <div class="stats">
+    <div><div class="stat-val" id="total-count">28</div>categories</div>
+    <div><div class="stat-val" id="selected-count">0</div>selected</div>
+  </div>
+</div>
+
+<nav class="inv-nav" id="inv-nav"></nav>
+
+<div class="inv-container" id="inventory">
+
+<!-- ========== 1. TOP BAR ========== -->
+<div class="category" id="cat-1">
+  <div class="category-title"><span class="cat-num">1</span> Top Bar</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="topbar" data-variant="shared">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="topbar" value="shared" checked> Dark sticky bar with logo + breadcrumb</label>
+        <span class="source-tag">ALL FILES</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-topbar">
+          <img src="https://static.redhat.com/libs/redhat/brand-assets/2/corp/logo--on-dark.svg" alt="Red Hat" height="28">
+          <div class="divider"></div>
+          <div class="nav-label">Technical Guide</div>
+          <div class="divider"></div>
+          <div class="nav-label">Customer Name</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 2. HERO ========== -->
+<div class="category" id="cat-2">
+  <div class="category-title"><span class="cat-num">2</span> Hero / Header</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="hero" data-variant="gradient">
+      <div class="variant-card-header">
+        <label><input type="radio" name="hero" value="gradient"> Gradient hero with tag pill + meta-row</label>
+        <span class="source-tag">ALTAIA / CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-hero-a">
+          <div class="tag">TECHNICAL GUIDE</div>
+          <h1>Backup Strategy for <span>OpenShift</span></h1>
+          <p class="subtitle">Step-by-step guide for implementing backup solutions using Commvault on OCP 4.15</p>
+          <div class="meta-row">
+            <div class="meta-item"><strong>Customer:</strong> ACME Corp</div>
+            <div class="meta-item"><strong>Product:</strong> OpenShift 4.15</div>
+            <div class="meta-item"><strong>Date:</strong> 2026-04-09</div>
+            <div class="meta-item"><strong>Project:</strong> ALTAIA</div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="hero" data-variant="white-card">
+      <div class="variant-card-header">
+        <label><input type="radio" name="hero" value="white-card"> White card with red left border</label>
+        <span class="source-tag">COST-MANAGEMENT</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-hero-b">
+          <h1>Cost Management for OpenShift on Bare Metal</h1>
+          <p class="subtitle">Research guide: how to estimate costs for bare-metal OpenShift clusters</p>
+          <div class="meta">
+            <span><strong>Customer:</strong> ACME Corp</span>
+            <span><strong>Product:</strong> OpenShift Container Platform</span>
+            <span><strong>Date:</strong> 2026-04-09</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 3. TOC ========== -->
+<div class="category" id="cat-3">
+  <div class="category-title"><span class="cat-num">3</span> Table of Contents</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="toc" data-variant="card-2col">
+      <div class="variant-card-header">
+        <label><input type="radio" name="toc" value="card-2col"> White card, 2-column numbered list</label>
+        <span class="source-tag">ALTAIA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-toc-a">
+          <h3>Quick Navigation</h3>
+          <ol>
+            <li><a href="#">Scope and Definitions</a></li>
+            <li><a href="#">Prerequisites</a></li>
+            <li><a href="#">Architecture Overview</a></li>
+            <li><a href="#">Installation Steps</a></li>
+            <li><a href="#">Validation Checklist</a></li>
+            <li><a href="#">Troubleshooting</a></li>
+          </ol>
+        </div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="toc" data-variant="sidebar">
+      <div class="variant-card-header">
+        <label><input type="radio" name="toc" value="sidebar"> Sticky sidebar with scroll-spy</label>
+        <span class="source-tag">COST-MANAGEMENT</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-toc-b">
+          <div class="toc-title">Contents</div>
+          <a href="#" class="active">1. The Challenge</a>
+          <a href="#">2. Cost Management</a>
+          <a href="#">3. Cost Models</a>
+          <a href="#">4. Implementation</a>
+          <a href="#">5. Results</a>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 4. PART DIVIDER ========== -->
+<div class="category" id="cat-4">
+  <div class="category-title"><span class="cat-num">4</span> Part Divider</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="part-divider" data-variant="pill-line">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="part-divider" value="pill-line"> Red pill tag + title + horizontal line</label>
+        <span class="source-tag">CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-part-div">
+          <span class="part-tag">Part 01</span>
+          <h2>Planning and Decisions</h2>
+        </div>
+        <div class="demo-part-div" style="margin-top: 16px;">
+          <span class="part-tag">Part 02</span>
+          <h2>Implementation</h2>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 5. SECTION HEADERS ========== -->
+<div class="category" id="cat-5">
+  <div class="category-title"><span class="cat-num">5</span> Section Headers</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="section-header" data-variant="card-circle">
+      <div class="variant-card-header">
+        <label><input type="radio" name="section-header" value="card-circle"> Card with circle badge</label>
+        <span class="source-tag">ALTAIA / CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-sec-a">
+          <div class="sh"><div class="num">01</div><h2>Scope and Definitions</h2></div>
+          <div class="body">Section content goes here...</div>
+        </div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="section-header" data-variant="inline-square">
+      <div class="variant-card-header">
+        <label><input type="radio" name="section-header" value="inline-square"> Inline with square badge + red underline</label>
+        <span class="source-tag">COST-MANAGEMENT</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-sec-b"><span class="num">1</span> The Challenge: Bare Metal without Native Billing</div>
+        <p style="margin-top: 12px; font-size: 13px; color: #4d4d4d;">Section content goes here with the inline section header style...</p>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 6. STEP CARDS ========== -->
+<div class="category" id="cat-6">
+  <div class="category-title"><span class="cat-num">6</span> Step Cards</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="step-cards" data-variant="altaia">
+      <div class="variant-card-header">
+        <label><input type="radio" name="step-cards" value="altaia"> Card with header bar + category tags</label>
+        <span class="source-tag">ALTAIA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-step-a">
+        <div class="step">
+          <div class="step-header">
+            <span class="step-num">01</span>
+            <h3>Define RPO/RTO and Retention Policy</h3>
+            <span class="tag tag-scope">scope</span>
+          </div>
+          <div class="step-body">Without recovery targets, you cannot configure frequency or retention.</div>
+        </div>
+        <div class="step">
+          <div class="step-header">
+            <span class="step-num">02</span>
+            <h3>Configure Backup Plan</h3>
+            <span class="tag tag-config">config</span>
+          </div>
+          <div class="step-body">Set up the Commvault backup plan for OpenShift workloads.</div>
+        </div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="step-cards" data-variant="guia-rede">
+      <div class="variant-card-header">
+        <label><input type="radio" name="step-cards" value="guia-rede"> Color-coded circle (verify/test/cleanup)</label>
+        <span class="source-tag">GUIA-REDE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-step-b">
+        <div class="step-card">
+          <div class="step-head"><div class="step-num red">1</div><div class="step-title">Install NMState Operator</div></div>
+          <div class="step-body">Verify the operator is deployed and available.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-num verify">V</div><div class="step-title">Verify Configuration</div></div>
+          <div class="step-body">Check NNCP status and network interfaces.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-num test">T</div><div class="step-title">Deploy Test Pod</div></div>
+          <div class="step-body">Create a test pod with the backup network annotation.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-num cleanup">C</div><div class="step-title">Cleanup</div></div>
+          <div class="step-body">Remove test resources after validation.</div>
+        </div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="step-cards" data-variant="cost-flow">
+      <div class="variant-card-header">
+        <label><input type="radio" name="step-cards" value="cost-flow"> Vertical timeline with circles</label>
+        <span class="source-tag">COST-MANAGEMENT</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-step-c">
+        <div class="step-flow">
+          <div class="step-item" data-step="1"><div class="step-content"><div class="step-title">Install Cost Management Operator</div><div class="step-text">Deploy via OperatorHub in the OCP cluster.</div></div></div>
+          <div class="step-item" data-step="2"><div class="step-content"><div class="step-title">Create Cost Model</div><div class="step-text">Go to Cost Management > Settings > Cost Models.</div></div></div>
+          <div class="step-item" data-step="3"><div class="step-content"><div class="step-title">Apply Tags</div><div class="step-text">Tag namespaces and projects for cost allocation.</div></div></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 7. CALLOUTS ========== -->
+<div class="category" id="cat-7">
+  <div class="category-title"><span class="cat-num">7</span> Cards / Callouts</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="callouts" data-variant="base-simple">
+      <div class="variant-card-header">
+        <label><input type="radio" name="callouts" value="base-simple"> Simple left border (info/warning/success)</label>
+        <span class="source-tag">CURRENT BASE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-call-a">
+        <div class="card info"><h3>Info</h3><p>The NMState Operator is pre-installed on OCP 4.14+</p></div>
+        <div class="card warning"><h3>Warning</h3><p>This VLAN uses IPv6 only. IPv4 is not available.</p></div>
+        <div class="card success"><h3>Success</h3><p>All validation checks passed successfully.</p></div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="callouts" data-variant="altaia-border">
+      <div class="variant-card-header">
+        <label><input type="radio" name="callouts" value="altaia-border"> Full border + left accent</label>
+        <span class="source-tag">ALTAIA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-call-b">
+        <div class="callout callout-info"><strong>Info:</strong> Pre-installed on OCP 4.14+</div>
+        <div class="callout callout-warn"><strong>Warning:</strong> IPv6-only VLAN, no IPv4 available</div>
+        <div class="callout callout-danger"><strong>Critical:</strong> Data loss risk if RPO is not defined</div>
+        <div class="callout callout-blog"><strong>Blog:</strong> Reference architecture published on redhat.com</div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="callouts" data-variant="cost-fill">
+      <div class="variant-card-header">
+        <label><input type="radio" name="callouts" value="cost-fill"> Background fill with title</label>
+        <span class="source-tag">COST-MANAGEMENT</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-call-c">
+        <div class="callout callout-red"><div class="callout-title">Important</div>~70% of CPU resources are typically unused.</div>
+        <div class="callout callout-blue"><div class="callout-title">Tip</div>No fixed rule for TCO splitting.</div>
+        <div class="callout callout-green"><div class="callout-title">Best Practice</div>Use tag-based rates for differentiation.</div>
+        <div class="callout callout-orange"><div class="callout-title">Note</div>Amortization period affects cost dramatically.</div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="callouts" data-variant="card-accent">
+      <div class="variant-card-header">
+        <label><input type="radio" name="callouts" value="card-accent"> Card with colored accent border</label>
+        <span class="source-tag">COST-MANAGEMENT</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-call-d">
+        <div class="card accent-blue"><h3>Use Cases</h3><p>Common scenarios for cost management adoption.</p></div>
+        <div class="card accent-green"><h3>Prerequisites</h3><p>Required setup before implementation.</p></div>
+        <div class="card accent-orange"><h3>Showback</h3><p>Visibility without internal billing.</p></div>
+        <div class="card accent-teal"><h3>OpenCost</h3><p>CNCF alternative for Kubernetes cost monitoring.</p></div>
+        <div class="card accent-red"><h3>Chargeback</h3><p>Full internal billing between departments.</p></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 8. SCOPE CARDS ========== -->
+<div class="category" id="cat-8">
+  <div class="category-title"><span class="cat-num">8</span> Scope Cards Grid</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="scope-cards" data-variant="tri-color">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="scope-cards" value="tri-color"> In-scope / Out-of-scope / To Validate</label>
+        <span class="source-tag">CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-scope">
+        <div class="scope-grid">
+          <div class="scope-card in"><h4>In Scope</h4><ul><li>Commvault integration with OCP</li><li>etcd backup automation</li></ul></div>
+          <div class="scope-card out"><h4>Out of Scope</h4><ul><li>Database backup policies</li><li>DR site configuration</li></ul></div>
+          <div class="scope-card tbd"><h4>To Validate</h4><ul><li>Dedup support for PVs</li><li>Cross-cluster restore</li></ul></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 9. TABLES ========== -->
+<div class="category" id="cat-9">
+  <div class="category-title"><span class="cat-num">9</span> Tables</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="tables" data-variant="dark-header">
+      <div class="variant-card-header">
+        <label><input type="radio" name="tables" value="dark-header"> Dark header with zebra striping</label>
+        <span class="source-tag">CURRENT BASE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-table demo-table-a">
+        <table><thead><tr><th>Component</th><th>Version</th><th>Status</th></tr></thead>
+        <tbody><tr><td>OpenShift</td><td>4.15.3</td><td>Active</td></tr><tr><td>Commvault</td><td>11.36</td><td>Deployed</td></tr><tr><td>NMState</td><td>4.15.0</td><td>Active</td></tr></tbody></table>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="tables" data-variant="gantt">
+      <div class="variant-card-header">
+        <label><input type="radio" name="tables" value="gantt"> Gantt-style activity table</label>
+        <span class="source-tag">CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-table demo-table-b">
+        <table><thead><tr><th>#</th><th>Activity</th><th>Owner</th><th>Dep.</th><th>Status</th></tr></thead>
+        <tbody><tr><td>1</td><td><strong>Define RPO/RTO</strong><span class="detail">Without targets, cannot configure frequency.</span></td><td>PM Leo</td><td>—</td><td><span class="badge badge-pending" style="font-size:10px;padding:2px 6px;">PENDING</span></td></tr>
+        <tr><td>2</td><td><strong>Network VLAN setup</strong><span class="detail">Request VLAN 857 from infra team.</span></td><td>Infra</td><td>#1</td><td><span class="badge badge-done" style="font-size:10px;padding:2px 6px;">DONE</span></td></tr></tbody></table>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="tables" data-variant="checklist">
+      <div class="variant-card-header">
+        <label><input type="radio" name="tables" value="checklist"> Checklist validation table</label>
+        <span class="source-tag">GUIA-REDE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-table demo-table-c">
+        <table><thead><tr><th class="status"></th><th>Check</th><th>Command</th><th>Expected</th></tr></thead>
+        <tbody><tr><td class="status">&#9744;</td><td>NMState Operator active</td><td><code>oc get nmstate</code></td><td>Available</td></tr>
+        <tr><td class="status">&#9745;</td><td>VLAN interface created</td><td><code>ip link show</code></td><td>bond2.857 UP</td></tr></tbody></table>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 10. CODE BLOCKS ========== -->
+<div class="category" id="cat-10">
+  <div class="category-title"><span class="cat-num">10</span> Code Blocks</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="code-blocks" data-variant="red-border">
+      <div class="variant-card-header">
+        <label><input type="radio" name="code-blocks" value="red-border"> Dark pre with red left border</label>
+        <span class="source-tag">CURRENT BASE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-code demo-code-a">
+        <pre>apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-config
+data:
+  retention: "30d"</pre>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="code-blocks" data-variant="file-label">
+      <div class="variant-card-header">
+        <label><input type="radio" name="code-blocks" value="file-label"> File label tab + syntax coloring</label>
+        <span class="source-tag">ALTAIA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-code demo-code-b">
+        <div class="file-label">backup-config.yaml</div>
+        <pre><span class="key">apiVersion:</span> <span class="value">v1</span>
+<span class="key">kind:</span> <span class="value">ConfigMap</span>
+<span class="key">metadata:</span>
+  <span class="key">name:</span> <span class="value">backup-config</span>  <span class="comment"># Commvault integration</span></pre>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="code-blocks" data-variant="cmd-yaml">
+      <div class="variant-card-header">
+        <label><input type="radio" name="code-blocks" value="cmd-yaml"> Terminal + YAML with placeholders</label>
+        <span class="source-tag">GUIA-REDE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-code demo-code-c">
+        <pre class="cmd">oc debug node/<span class="placeholder">&lt;worker-node&gt;</span> -- chroot /host ip link show
+<span class="comment"># Look for physical NICs (ens3f0, bond0, etc.)</span></pre>
+        <pre class="yaml" style="margin-top:8px"><span class="key">apiVersion:</span> <span class="val">nmstate.io/v1</span>
+<span class="key">kind:</span> <span class="val">NodeNetworkConfigurationPolicy</span></pre>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 11. TERMINAL ========== -->
+<div class="category" id="cat-11">
+  <div class="category-title"><span class="cat-num">11</span> Terminal / Command Block</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="terminal" data-variant="green-on-black">
+      <div class="variant-card-header">
+        <label><input type="radio" name="terminal" value="green-on-black"> Green text on black, $ prompt</label>
+        <span class="source-tag">CURRENT BASE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-term-a">
+        <div class="terminal">
+          <div><span class="prompt">$ </span><span class="cmd">oc get nodes -o wide</span></div>
+          <div><span class="prompt">$ </span><span class="cmd">oc adm top pods -n backup</span></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="terminal" data-variant="cmd-syntax">
+      <div class="variant-card-header">
+        <label><input type="radio" name="terminal" value="cmd-syntax"> pre.cmd with comment/placeholder colors</label>
+        <span class="source-tag">GUIA-REDE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-code demo-code-c">
+        <pre class="cmd">oc debug node/<span class="placeholder">&lt;worker-node&gt;</span> -- chroot /host ip link show
+
+<span class="comment"># Expected output: list of NICs</span>
+<span class="expected">ens3f0: &lt;BROADCAST,MULTICAST,UP&gt;</span></pre>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 12. TIMELINE ========== -->
+<div class="category" id="cat-12">
+  <div class="category-title"><span class="cat-num">12</span> Timeline</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="timeline" data-variant="red-dots">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="timeline" value="red-dots" checked> Red dots on vertical line</label>
+        <span class="source-tag">ALTAIA / BASE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-tl demo-tl-a">
+        <div class="timeline">
+          <div class="tl-item"><div class="date">Week 1-2</div><div class="event">Planning and decisions</div><div class="detail">Define RPO/RTO, network requirements</div></div>
+          <div class="tl-item"><div class="date">Week 3-4</div><div class="event">Infrastructure setup</div><div class="detail">VLAN configuration, access node deployment</div></div>
+          <div class="tl-item"><div class="date">Week 5-6</div><div class="event">Testing and validation</div><div class="detail">Backup/restore exercises, performance tuning</div></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 13. METRIC CARDS ========== -->
+<div class="category" id="cat-13">
+  <div class="category-title"><span class="cat-num">13</span> Metric Cards</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="metrics" data-variant="red-top">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="metrics" value="red-top" checked> Grid with red top border + large value</label>
+        <span class="source-tag">CURRENT BASE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-mc-a">
+        <div class="metric-cards">
+          <div class="metric-card"><div class="mc-value">99.9%</div><div class="mc-label">Uptime SLA</div></div>
+          <div class="metric-card"><div class="mc-value">4h</div><div class="mc-label">RTO Target</div></div>
+          <div class="metric-card"><div class="mc-value">24h</div><div class="mc-label">RPO Target</div></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 14. ACCORDION ========== -->
+<div class="category" id="cat-14">
+  <div class="category-title"><span class="cat-num">14</span> Accordion / Expandable</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="accordion" data-variant="arrow">
+      <div class="variant-card-header">
+        <label><input type="radio" name="accordion" value="arrow"> Red arrow, white card</label>
+        <span class="source-tag">CURRENT BASE / ALTAIA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-acc demo-acc-a">
+        <details><summary>What is the recommended RPO for etcd?</summary><div class="details-body">For production clusters, Red Hat recommends an RPO of no more than 24 hours for etcd snapshots.</div></details>
+        <details open><summary>Can I use deduplication with PVs?</summary><div class="details-body">Commvault supports dedup for block-based PVs, but not for all CSI drivers.</div></details>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="accordion" data-variant="rationale">
+      <div class="variant-card-header">
+        <label><input type="radio" name="accordion" value="rationale"> Blue left border (rationale style)</label>
+        <span class="source-tag">CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-acc demo-acc-b">
+        <details><summary>Rationale: Why this order?</summary><div class="details-body">The Commvault Backup Plan requires frequency and retention definitions before any backup job can be configured. See documentation reference.</div></details>
+        <details open><summary>Rationale: Network dependency</summary><div class="details-body">VLAN must be trunked on the switch before NMState can create the interface on the worker nodes.</div></details>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 15. CHECKLIST ========== -->
+<div class="category" id="cat-15">
+  <div class="category-title"><span class="cat-num">15</span> Checklist</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="checklist" data-variant="static">
+      <div class="variant-card-header">
+        <label><input type="radio" name="checklist" value="static"> Static Unicode checkboxes</label>
+        <span class="source-tag">CURRENT BASE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-check-a">
+        <ul><li>NMState Operator installed</li><li>VLAN trunked on switch</li><li>NNCP applied successfully</li></ul>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="checklist" data-variant="interactive">
+      <div class="variant-card-header">
+        <label><input type="radio" name="checklist" value="interactive"> Interactive checkboxes with localStorage</label>
+        <span class="source-tag">NEW</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-check-c">
+        <ul><li><input type="checkbox"> NMState Operator installed</li><li><input type="checkbox" checked> VLAN trunked on switch</li><li><input type="checkbox"> NNCP applied successfully</li></ul>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 16. PEOPLE GRID ========== -->
+<div class="category" id="cat-16">
+  <div class="category-title"><span class="cat-num">16</span> People / Stakeholders Grid</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="people-grid" data-variant="avatars">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="people-grid" value="avatars"> Avatar circles with name + role</label>
+        <span class="source-tag">ALTAIA / CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-people">
+        <div class="people-grid">
+          <div class="person"><div class="avatar rh">AN</div><div class="info"><div class="name">Andre Nobre</div><div class="role">TAM — Red Hat</div></div></div>
+          <div class="person"><div class="avatar tel">JR</div><div class="info"><div class="name">Jose Ribeiro</div><div class="role">SRE Lead — Customer</div></div></div>
+          <div class="person"><div class="avatar rh">MF</div><div class="info"><div class="name">Maria Ferreira</div><div class="role">Consultant — Red Hat</div></div></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 17. QUESTION LIST ========== -->
+<div class="category" id="cat-17">
+  <div class="category-title"><span class="cat-num">17</span> Question List with Notes</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="question-list" data-variant="numbered">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="question-list" value="numbered"> Numbered questions with textarea</label>
+        <span class="source-tag">ALTAIA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-questions">
+        <ol class="question-list">
+          <li>What is the current RPO requirement?<textarea placeholder="Notes..."></textarea></li>
+          <li>Which CSI driver is being used for PVs?<textarea placeholder="Notes..."></textarea></li>
+        </ol>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 18. BADGES ========== -->
+<div class="category" id="cat-18">
+  <div class="category-title"><span class="cat-num">18</span> Badges / Status Pills</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="badges" data-variant="semantic">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="badges" value="semantic" checked> Semantic color badges</label>
+        <span class="source-tag">ALTAIA / CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-badges">
+        <span class="badge badge-done">DONE</span>
+        <span class="badge badge-blocked">BLOCKED</span>
+        <span class="badge badge-info">INFO</span>
+        <span class="badge badge-critical">CRITICAL</span>
+        <span class="badge badge-pending">PENDING</span>
+        <span class="badge badge-new">NEW</span>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 19. CATEGORY TAGS ========== -->
+<div class="category" id="cat-19">
+  <div class="category-title"><span class="cat-num">19</span> Category Tags</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="category-tags" data-variant="colored-pills">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="category-tags" value="colored-pills"> Colored pills by category</label>
+        <span class="source-tag">ALTAIA / COST-MANAGEMENT</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-tags">
+        <span class="tag tag-scope">scope</span>
+        <span class="tag tag-config">config</span>
+        <span class="tag tag-verify">verify</span>
+        <span class="tag tag-node">node</span>
+        <span class="tag tag-pod">pod</span>
+        <span class="tag tag-red">critical</span>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 20. FLOW / FLOWCHART ========== -->
+<div class="category" id="cat-20">
+  <div class="category-title"><span class="cat-num">20</span> Flow / Flowchart Horizontal</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="flowchart" data-variant="boxes-arrows">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="flowchart" value="boxes-arrows"> Boxes + arrows (highlight/alt)</label>
+        <span class="source-tag">ALTAIA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-flow">
+        <div class="flow">
+          <div class="flow-box highlight">Define RPO</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box alt">Setup VLAN</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box">Deploy Agent</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box highlight">Validate</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 21. FORMULA BOX ========== -->
+<div class="category" id="cat-21">
+  <div class="category-title"><span class="cat-num">21</span> Formula Box</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="formula-box" data-variant="teal">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="formula-box" value="teal"> Teal-themed box with mono content</label>
+        <span class="source-tag">COST-MANAGEMENT</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-formula">
+        <div class="formula-box">
+          <div class="label">Formula: Cost per CPU Core (per hour)</div>
+          <code>Monthly_total = (HW_amortized + Power + Cooling + Network + Support + License)<br>Cost_per_core_hour = Monthly_total_CPU / (Total_cores x 730 hours/month)</code>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 22. REFERENCE LIST ========== -->
+<div class="category" id="cat-22">
+  <div class="category-title"><span class="cat-num">22</span> Reference List</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="ref-list" data-variant="arrows">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="ref-list" value="arrows"> Arrow-prefixed links</label>
+        <span class="source-tag">COST-MANAGEMENT</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-refs">
+        <ul class="ref-list">
+          <li><a href="#">Using cost models — Red Hat Documentation</a></li>
+          <li><a href="#">Hybrid Cloud Console — Cost Management</a></li>
+          <li><a href="#">OpenCost project — CNCF</a></li>
+        </ul>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 23. TROUBLESHOOTING PANEL ========== -->
+<div class="category" id="cat-23">
+  <div class="category-title"><span class="cat-num">23</span> Troubleshooting Panel</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="troubleshoot" data-variant="red-border">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="troubleshoot" value="red-border"> Red-bordered dl panel</label>
+        <span class="source-tag">GUIA-REDE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-trouble">
+        <div class="troubleshoot">
+          <h3>Troubleshooting</h3>
+          <dl>
+            <dt>NNCE stuck in Failing state</dt>
+            <dd>NIC does not exist on node, or VLAN not trunked on switch.</dd>
+            <dt>Pod has no secondary interface</dt>
+            <dd>Check NetworkAttachmentDefinition and pod annotation.</dd>
+          </dl>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 24. PREREQ / DATA GRID ========== -->
+<div class="category" id="cat-24">
+  <div class="category-title"><span class="cat-num">24</span> Prereq / Data Grid</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="prereq-grid" data-variant="orange">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="prereq-grid" value="orange"> Orange card with label/value grid</label>
+        <span class="source-tag">GUIA-REDE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-prereq">
+        <div class="prereq-box">
+          <h2>Backup Network Data — VLAN 857 (IPv6-only)</h2>
+          <div class="data-grid">
+            <span class="dg-label">VLAN ID</span><span class="dg-value"><strong>857</strong></span>
+            <span class="dg-label">CIDR IPv6</span><span class="dg-value">2001:12e0:500:9501::800/118</span>
+            <span class="dg-label">Gateway</span><span class="dg-value">2001:12e0:500:9501::801</span>
+            <span class="dg-label">NIC on nodes</span><span class="dg-value dg-placeholder">___ (identify in Step 0)</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 25. PHASE BLOCK ========== -->
+<div class="category" id="cat-25">
+  <div class="category-title"><span class="cat-num">25</span> Phase Block (Schedule)</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="phase-block" data-variant="with-owners">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="phase-block" value="with-owners"> Phase with owner badges</label>
+        <span class="source-tag">CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-phase">
+        <div class="phase-block">
+          <div class="phase-header" style="background: #ffe3d9;">
+            <div class="phase-num" style="background: #f0561d;">F0</div>
+            <h3>Decisions and Definitions (blocking)</h3>
+            <span class="phase-owner owner-tel">CUSTOMER</span>
+            <span class="phase-owner owner-rh">RED HAT</span>
+          </div>
+          <div class="phase-body">Phase content with activity tables goes here.</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 26. CRITICAL PATH ========== -->
+<div class="category" id="cat-26">
+  <div class="category-title"><span class="cat-num">26</span> Critical Path Callout</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="critical-path" data-variant="gradient">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="critical-path" value="gradient"> Gradient red-to-orange callout</label>
+        <span class="source-tag">CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-crit">
+        <div class="critical-path"><strong>Critical path:</strong> Access node decision (#2) + VLAN ready (#7) + images resolved (#17) converge at access node installation (#18).</div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 27. OWNER LEGEND ========== -->
+<div class="category" id="cat-27">
+  <div class="category-title"><span class="cat-num">27</span> Owner Legend</div>
+  <div class="variant-group single">
+    <div class="variant-card" data-category="owner-legend" data-variant="dots">
+      <div class="variant-card-header">
+        <label><input type="checkbox" name="owner-legend" value="dots"> Color dots with labels</label>
+        <span class="source-tag">CRONOGRAMA</span>
+      </div>
+      <div class="variant-card-body"><div class="preview demo-legend">
+        <div class="owner-legend">
+          <div class="legend-item"><div class="legend-dot" style="background: #ee0000;"></div> Red Hat (TAM / Consulting)</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #6753ac;"></div> Customer</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #147878;"></div> Operations</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #f5921b;"></div> Vendor</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 28. FOOTER ========== -->
+<div class="category" id="cat-28">
+  <div class="category-title"><span class="cat-num">28</span> Footer</div>
+  <div class="variant-group">
+    <div class="variant-card" data-category="footer" data-variant="simple">
+      <div class="variant-card-header">
+        <label><input type="radio" name="footer" value="simple"> Simple centered text</label>
+        <span class="source-tag">CURRENT BASE</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-footer-a"><span style="font-family:'Red Hat Display',sans-serif;font-weight:900;color:#ee0000;">RED HAT</span> &mdash; Confidential &mdash; &copy; 2026</div>
+      </div></div>
+    </div>
+    <div class="variant-card" data-category="footer" data-variant="dark-author">
+      <div class="variant-card-header">
+        <label><input type="radio" name="footer" value="dark-author"> Dark footer with author info</label>
+        <span class="source-tag">REFERENCE FILES</span>
+      </div>
+      <div class="variant-card-body"><div class="preview">
+        <div class="demo-footer-b">Created on 2026-04-09 &mdash; Andre Nobre, TAM &mdash; &copy; 2026 Red Hat, Inc. &mdash; <a href="#">anobre@redhat.com</a></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /inv-container -->
+
+<div class="fab-group">
+  <button class="fab-btn fab-export" onclick="exportSelections()">Export JSON</button>
+  <button class="fab-btn fab-reset" onclick="resetSelections()">Reset All</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'tam-copilot-component-selections';
+let _memoryStore = {};
+function storageGet() {
+  try { const v = localStorage.getItem(STORAGE_KEY); return v ? JSON.parse(v) : {}; }
+  catch { return _memoryStore; }
+}
+function storageSet(data) {
+  _memoryStore = data;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+const categories = [
+  'Top Bar','Hero','TOC','Part Divider','Section Headers','Step Cards',
+  'Callouts','Scope Cards','Tables','Code Blocks','Terminal','Timeline',
+  'Metric Cards','Accordion','Checklist','People Grid','Question List',
+  'Badges','Category Tags','Flowchart','Formula Box','Reference List',
+  'Troubleshooting','Prereq Grid','Phase Block','Critical Path',
+  'Owner Legend','Footer'
+];
+
+function buildNav() {
+  const nav = document.getElementById('inv-nav');
+  categories.forEach((name, i) => {
+    const a = document.createElement('a');
+    a.href = '#cat-' + (i + 1);
+    a.textContent = (i + 1) + '. ' + name;
+    nav.appendChild(a);
+  });
+}
+
+function loadSelections() {
+  const saved = storageGet();
+  Object.entries(saved).forEach(([name, value]) => {
+    const inputs = document.querySelectorAll(`input[name="${name}"]`);
+    inputs.forEach(inp => {
+      if (inp.type === 'radio') {
+        inp.checked = inp.value === value;
+      } else if (inp.type === 'checkbox') {
+        inp.checked = Array.isArray(value) ? value.includes(inp.value) : inp.value === value;
+      }
+    });
+  });
+  updateVisuals();
+}
+
+function saveSelections() {
+  const selections = {};
+  const allNames = new Set();
+  document.querySelectorAll('.variant-card input').forEach(inp => allNames.add(inp.name));
+
+  allNames.forEach(name => {
+    const inputs = document.querySelectorAll(`input[name="${name}"]`);
+    const first = inputs[0];
+    if (first.type === 'radio') {
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      if (checked) selections[name] = checked.value;
+    } else {
+      const checked = [...inputs].filter(i => i.checked).map(i => i.value);
+      if (checked.length) selections[name] = checked;
+    }
+  });
+
+  storageSet(selections);
+  updateVisuals();
+}
+
+function updateVisuals() {
+  document.querySelectorAll('.variant-card').forEach(card => {
+    const inp = card.querySelector('input');
+    card.classList.toggle('selected', inp && inp.checked);
+  });
+  const count = document.querySelectorAll('.variant-card.selected').length;
+  document.getElementById('selected-count').textContent = count;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function gatherSelections() {
+  const selections = {};
+  const allNames = new Set();
+  document.querySelectorAll('.variant-card input').forEach(inp => allNames.add(inp.name));
+  allNames.forEach(name => {
+    const inputs = document.querySelectorAll(`input[name="${name}"]`);
+    const first = inputs[0];
+    if (first.type === 'radio') {
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      if (checked) selections[name] = checked.value;
+    } else {
+      const checked = [...inputs].filter(i => i.checked).map(i => i.value);
+      if (checked.length) selections[name] = checked;
+    }
+  });
+  return selections;
+}
+
+function exportSelections() {
+  const data = gatherSelections();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'component-selections.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Selections exported as JSON');
+}
+
+function resetSelections() {
+  storageSet({});
+  document.querySelectorAll('.variant-card input').forEach(inp => {
+    inp.checked = false;
+  });
+  updateVisuals();
+  showToast('All selections reset');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildNav();
+  loadSelections();
+  document.getElementById('inventory').addEventListener('change', e => {
+    if (e.target.matches('.variant-card input')) saveSelections();
+  });
+});
+</script>
+
+</body>
+</html>

@@ -42,6 +42,22 @@ def render_guide(
         logger.info("render.done | template=%s html_len=%d", template_name, len(html))
         return html
 
+    if doc_type_slug == "project-schedule":
+        template_name = "schedule.html.j2"
+        logger.info("render.start | type=schedule template=%s", template_name)
+        template = _env.get_template(template_name)
+        html = template.render(data=data)
+        logger.info("render.done | template=%s html_len=%d", template_name, len(html))
+        return html
+
+    if doc_type_slug == "assessment":
+        template_name = "assessment.html.j2"
+        logger.info("render.start | type=assessment template=%s", template_name)
+        template = _env.get_template(template_name)
+        html = template.render(data=data)
+        logger.info("render.done | template=%s html_len=%d", template_name, len(html))
+        return html
+
     logger.info("render.start | type=generic template=base.html.j2 sections=%d", len(data.get("sections", [])))
     template = _env.get_template("base.html.j2")
     html = template.render(data=data)

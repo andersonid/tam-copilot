@@ -165,3 +165,16 @@ class TimeSeriesPoint(BaseModel):
     date: str
     label: str
     value: int
+
+
+class AssessmentResponseCreate(BaseModel):
+    respondent_name: str = Field(min_length=1, max_length=255)
+    responses: dict
+
+class AssessmentResponseRead(BaseModel):
+    id: int
+    guide_id: int
+    respondent_name: str
+    responses_json: str
+    submitted_at: datetime
+    model_config = {"from_attributes": True}

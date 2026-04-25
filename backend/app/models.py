@@ -113,3 +113,16 @@ class Guide(Base):
     document_type = relationship("DocumentType", back_populates="guides")
     provider = relationship("LLMProvider", back_populates="guides")
     tags = relationship("Tag", secondary=guide_tags, back_populates="guides")
+    assessment_responses = relationship("AssessmentResponse", back_populates="guide", cascade="all, delete-orphan")
+
+
+class AssessmentResponse(Base):
+    __tablename__ = "assessment_responses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    guide_id = Column(Integer, ForeignKey("guides.id", ondelete="CASCADE"), nullable=False)
+    respondent_name = Column(String(255), nullable=False)
+    responses_json = Column(Text, nullable=False)
+    submitted_at = Column(DateTime, server_default=func.now())
+
+    guide = relationship("Guide", back_populates="assessment_responses")

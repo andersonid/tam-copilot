@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ data.title | default("KCS How-to") }}</title>
+<title>{{ data.title | default("KCS Troubleshooting Guide") }}</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;900&family=Red+Hat+Text:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600;700&display=swap');
 
@@ -19,15 +19,15 @@
   --rh-gray-100: #F0F0F0;
   --rh-white: #FFFFFF;
   --rh-blue: #0066CC;
+  --rh-blue-light: #E0F0FF;
+  --rh-orange: #EC7A08;
+  --rh-orange-light: #FFE8CC;
   --rh-green: #3E8635;
+  --rh-green-light: #E9F7DF;
   --rh-teal: #009596;
-  --surface: var(--rh-white);
-  --surface2: #f5f5f5;
-  --border: var(--rh-gray-300);
-  --text: var(--rh-gray-900);
-  --text-dim: var(--rh-gray-500);
-  --blue-light: #E0F0FF;
-  --green-light: #E9F7DF;
+  --rh-teal-light: #DAF2F2;
+  --danger: #C9190B;
+  --danger-light: #FCE3E1;
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -35,7 +35,7 @@
 body {
   font-family: 'Red Hat Text', sans-serif;
   font-size: 15px;
-  color: var(--text);
+  color: var(--rh-gray-900);
   background: var(--rh-gray-100);
   line-height: 1.6;
 }
@@ -97,66 +97,119 @@ body {
 .hero .meta-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.6); }
 .hero .meta-item strong { color: rgba(255,255,255,0.9); }
 
-.kcs-container { max-width: 860px; margin: 0 auto; padding: 2rem; }
+.kcs-container { max-width: 900px; margin: 0 auto; padding: 2rem; }
 
 .abstract-card {
-  background: var(--blue-light);
-  border: 1px solid var(--rh-blue);
-  border-left: 4px solid var(--rh-blue);
+  background: var(--rh-orange-light);
+  border: 1px solid var(--rh-orange);
+  border-left: 4px solid var(--rh-orange);
   border-radius: 6px;
   padding: 18px 22px;
   margin-bottom: 2rem;
   font-size: 15px;
 }
 
-.step-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 16px;
+.diag-path {
+  background: var(--rh-white);
+  border: 1px solid var(--rh-gray-300);
+  border-radius: 6px;
+  margin-bottom: 24px;
   overflow: hidden;
 }
-.step-head {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface2);
+.diag-header {
+  background: var(--danger-light);
+  border-bottom: 1px solid var(--rh-gray-300);
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.step-num {
+.diag-num {
   font-family: 'Red Hat Mono', monospace;
-  font-size: 13px; font-weight: 700;
-  color: white; background: var(--rh-red);
-  width: 30px; height: 30px;
-  border-radius: 50%;
+  font-size: 12px; font-weight: 700;
+  color: var(--rh-white);
+  background: var(--danger);
+  min-width: 28px; height: 28px;
+  border-radius: 999px;
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
 }
-.step-title {
+.diag-header h2 {
   font-family: 'Red Hat Display', sans-serif;
-  font-size: 15px; font-weight: 600;
+  font-weight: 700; font-size: 16px; color: var(--rh-black);
+  margin: 0; padding: 0; border: none;
+  flex: 1;
 }
-.step-body { padding: 18px 22px; }
-.step-body p:last-child { margin-bottom: 0; }
+.diag-body { padding: 22px; }
 
-.elaboration {
-  background: var(--green-light);
-  border: 1px solid var(--rh-green);
-  border-left: 4px solid var(--rh-green);
-  border-radius: 6px;
-  padding: 18px 22px;
-  margin-top: 8px;
+.diag-sub { margin-bottom: 16px; }
+.diag-sub h3 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--rh-gray-500);
+  margin-bottom: 8px;
+}
+
+.check-list { list-style: none; padding: 0; counter-reset: chk; }
+.check-list li {
+  counter-increment: chk;
+  padding: 8px 0 8px 36px;
+  position: relative;
+  border-bottom: 1px solid var(--rh-gray-100);
   font-size: 14px;
 }
-.elaboration h3 {
-  font-family: 'Red Hat Display', sans-serif;
-  font-size: 14px; font-weight: 700;
-  color: var(--rh-green);
-  margin: 0 0 8px; padding: 0; border: none;
+.check-list li:last-child { border-bottom: none; }
+.check-list li::before {
+  content: counter(chk);
+  position: absolute; left: 0; top: 8px;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px; font-weight: 700;
+  background: var(--rh-teal); color: var(--rh-white);
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
 }
 
-pre { background: var(--rh-gray-95); color: #E0E0E0; padding: 1rem; border-radius: 4px; overflow-x: auto; font-family: 'Red Hat Mono', monospace; font-size: 0.9rem; margin: 0.75rem 0; border-left: 4px solid var(--rh-teal); }
+.resolution-box {
+  background: var(--rh-green-light);
+  border: 1px solid var(--rh-green);
+  border-left: 4px solid var(--rh-green);
+  border-radius: 4px;
+  padding: 14px 18px;
+  font-size: 14px;
+}
+
+.related-links {
+  list-style: none; padding: 0; margin-top: 8px;
+}
+.related-links li {
+  font-size: 13px; color: var(--rh-gray-500);
+  padding: 2px 0;
+}
+.related-links li::before {
+  content: "→"; color: var(--rh-blue);
+  font-weight: 700; margin-right: 6px;
+}
+
+.recommendations {
+  background: var(--rh-blue-light);
+  border: 1px solid var(--rh-blue);
+  border-left: 4px solid var(--rh-blue);
+  border-radius: 6px;
+  padding: 18px 22px;
+  margin-top: 12px;
+}
+.recommendations h2 {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 16px; font-weight: 700;
+  color: var(--rh-black);
+  margin: 0 0 12px; padding: 0; border: none;
+}
+.recommendations ul { padding-left: 1.5rem; }
+.recommendations li { margin-bottom: 6px; font-size: 14px; }
+
 code { font-family: 'Red Hat Mono', monospace; }
 p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--rh-gray-95); color: #E0E0E0; padding: 1rem; border-radius: 4px; overflow-x: auto; font-family: 'Red Hat Mono', monospace; font-size: 0.9rem; margin: 0.75rem 0; border-left: 4px solid var(--danger); }
 
 .kcs-footer {
   background: var(--rh-gray-95);
@@ -170,7 +223,7 @@ p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; borde
 @media print {
   .top-bar { position: static; }
   body { background: white; }
-  .step-card { break-inside: avoid; }
+  .diag-path { break-inside: avoid; }
 }
 </style>
 </head>
@@ -179,7 +232,7 @@ p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; borde
 <div class="top-bar">
   <img src="https://static.redhat.com/libs/redhat/brand-assets/2/corp/logo--on-dark.svg" alt="Red Hat" height="32">
   <div class="divider"></div>
-  <div class="nav-label">{{ data.title | default("KCS How-to") }}</div>
+  <div class="nav-label">{{ data.title | default("KCS Troubleshooting Guide") }}</div>
   {% if data.get('meta', {}).get('customer') %}
   <div class="divider"></div>
   <div class="nav-label">{{ data.meta.customer }}</div>
@@ -187,7 +240,7 @@ p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; borde
 </div>
 
 <div class="hero">
-  <div class="tag">{{ data.get('meta', {}).get('doc_type_label', 'KCS HOW-TO') }}</div>
+  <div class="tag">{{ data.get('meta', {}).get('doc_type_label', 'KCS TROUBLESHOOTING GUIDE') }}</div>
   <h1>{{ data.title }}</h1>
   {% if data.get('subtitle') %}
   <p class="subtitle">{{ data.subtitle }}</p>
@@ -212,29 +265,58 @@ p code, li code { background: var(--rh-gray-100); padding: 0.1rem 0.35rem; borde
 <div class="abstract-card">{{ data.abstract }}</div>
 {% endif %}
 
-<h2 style="font-family:'Red Hat Display',sans-serif;font-size:18px;font-weight:700;color:var(--rh-black);margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid var(--rh-red);">Steps</h2>
-
-{% for step in data.get('steps', []) %}
-<div class="step-card">
-  <div class="step-head">
-    <div class="step-num">{{ loop.index }}</div>
-    <div class="step-title">Step {{ loop.index }}</div>
+{% for path in data.get('diagnostic_paths', []) %}
+<div class="diag-path">
+  <div class="diag-header">
+    <div class="diag-num">{{ loop.index }}</div>
+    <h2>{{ path.symptom }}</h2>
   </div>
-  <div class="step-body">
-    <p>{{ step }}</p>
+  <div class="diag-body">
+    {% if path.get('checks') %}
+    <div class="diag-sub">
+      <h3>Diagnostic Checks</h3>
+      <ol class="check-list">
+        {% for check in path.checks %}
+        <li>{{ check }}</li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+
+    {% if path.get('resolution') %}
+    <div class="diag-sub">
+      <h3>Resolution</h3>
+      <div class="resolution-box">{{ path.resolution }}</div>
+    </div>
+    {% endif %}
+
+    {% if path.get('related_articles') %}
+    <div class="diag-sub">
+      <h3>Related Articles</h3>
+      <ul class="related-links">
+        {% for ref in path.related_articles %}
+        <li>{{ ref }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endfor %}
 
-{% if data.get('elaboration') %}
-<div class="elaboration">
-  <h3>Additional Notes</h3>
-  <p>{{ data.elaboration }}</p>
+{% if data.get('general_recommendations') %}
+<div class="recommendations">
+  <h2>General Recommendations</h2>
+  <ul>
+    {% for rec in data.general_recommendations %}
+    <li>{{ rec }}</li>
+    {% endfor %}
+  </ul>
 </div>
 {% endif %}
 
 <div class="kcs-footer">
-  KCS How-To &mdash; Generated by TAM-Copilot &mdash; &copy; Red Hat, Inc.
+  KCS Troubleshooting Guide &mdash; Generated by TAM-Copilot &mdash; &copy; Red Hat, Inc.
   {% if data.get('meta', {}).get('author') %}&mdash; {{ data.meta.author }}{% endif %}
 </div>
 

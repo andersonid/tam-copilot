@@ -119,6 +119,47 @@ async def public_guide_info(guide_id: int):
     return {"id": guide.id, "title": guide.title}
 
 
+from .models import AssessmentResponse as _AssessmentResponse  # noqa: E402
+from .schemas import AssessmentResponseCreate as _AssessmentResponseCreate  # noqa: E402
+from .schemas import AssessmentResponseRead as _AssessmentResponseRead  # noqa: E402
+import json as _json  # noqa: E402
+
+
+@app.post("/api/public/guides/{guide_id}/respond", status_code=201)
+async def submit_assessment_response(guide_id: int, body: _AssessmentResponseCreate, token: str = Query(...)):
+    """Public token-gated endpoint for clients to submit assessment responses."""
+    async with _async_session() as db:
+        guide = await db.scalar(
+            _select(_Guide).where(_Guide.id == guide_id, _Guide.access_token == token)
+        )
+        if not guide:
+            raise HTTPException(403, "Invalid token or guide not found")
+
+        response = _AssessmentResponse(
+            guide_id=guide_id,
+            respondent_name=body.respondent_name,
+            responses_json=_json.dumps(body.responses),
+        )
+        db.add(response)
+        await db.commit()
+        await db.refresh(response)
+        logger.info("assessment.response.submitted | guide_id=%d respondent=%s", guide_id, body.respondent_name)
+        return {"id": response.id, "message": "Response submitted successfully"}
+
+
+@app.get("/api/guides/{guide_id}/responses", response_model=list[_AssessmentResponseRead],
+         dependencies=[Depends(get_current_user)])
+async def get_assessment_responses(guide_id: int):
+    """Admin-only: list all assessment responses for a guide."""
+    async with _async_session() as db:
+        result = await db.execute(
+            _select(_AssessmentResponse)
+            .where(_AssessmentResponse.guide_id == guide_id)
+            .order_by(_AssessmentResponse.submitted_at.desc())
+        )
+        return result.scalars().all()
+
+
 static_dir = Path(settings.static_dir)
 if static_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
