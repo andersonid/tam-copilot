@@ -130,6 +130,10 @@ class Account(Base):
     tam_type = Column(String(50), nullable=True)
     service_days_json = Column(Text, nullable=True)  # JSON with Mon-Fri service config
     purchased_products_json = Column(Text, nullable=True)  # JSON list of product names
+    has_tam = Column(Boolean, nullable=False, default=False)
+    csm_name = Column(String(255), nullable=True)
+    csm_sso_username = Column(String(100), nullable=True)
+    strategic = Column(Boolean, nullable=False, default=False)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, server_default=func.now())

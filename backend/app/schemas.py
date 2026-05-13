@@ -95,6 +95,10 @@ class AccountRead(BaseModel):
     segment: SegmentRead | None = None
     tam_user_id: int | None
     tam_type: str | None
+    has_tam: bool = False
+    csm_name: str | None = None
+    csm_sso_username: str | None = None
+    strategic: bool = False
     notes: str | None
     is_active: bool
     created_at: datetime
@@ -110,6 +114,8 @@ class AccountListRead(BaseModel):
     country: str | None
     tam_type: str | None
     is_active: bool
+    has_tam: bool = False
+    strategic: bool = False
     vertical_id: int | None = None
     segment_id: int | None = None
     vertical_name: str | None = None

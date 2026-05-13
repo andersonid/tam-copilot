@@ -42,7 +42,7 @@ async def generate_tam_report(
 ):
     """Generate a comprehensive TAM Report for the given account."""
     if user.role == "viewer":
-        raise HTTPException(403, "Perfil somente leitura")
+        raise HTTPException(403, "Read-only profile")
     await ensure_account_access(db, user, account_id)
     account = await db.scalar(select(Account).where(Account.id == account_id))
     if not account:

@@ -58,7 +58,7 @@ def _assignment_to_read(a: AccountAssignment) -> AccountAssignmentRead:
 
 def _viewer_block(user: AdminUser) -> None:
     if user.role == "viewer":
-        raise HTTPException(403, "Perfil somente leitura")
+        raise HTTPException(403, "Read-only profile")
 
 
 class HydraAccountResult(BaseModel):

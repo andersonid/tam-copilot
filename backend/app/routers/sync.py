@@ -31,7 +31,7 @@ def _get_sync_service() -> SyncService:
 
 def _viewer_block(user: AdminUser) -> None:
     if user.role == "viewer":
-        raise HTTPException(403, "Perfil somente leitura")
+        raise HTTPException(403, "Read-only profile")
 
 
 async def _get_account(account_id: int, db: AsyncSession, user: AdminUser) -> Account:
@@ -40,6 +40,23 @@ async def _get_account(account_id: int, db: AsyncSession, user: AdminUser) -> Ac
     if not account:
         raise HTTPException(404, f"Account {account_id} not found")
     return account
+
+
+@router.post(
+    "/account-metadata",
+    summary="Sync account metadata from Hydra",
+    description="Pulls hasTAM flag, CSM info, and strategic flag from Hydra account details.",
+)
+async def sync_account_metadata(
+    account_id: int,
+    user: AdminUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _viewer_block(user)
+    svc = _get_sync_service()
+    account = await _get_account(account_id, db, user)
+    meta = await svc.sync_account_metadata(db, account)
+    return {"domain": "account_metadata", "account_id": account_id, "data": meta}
 
 
 @router.post(

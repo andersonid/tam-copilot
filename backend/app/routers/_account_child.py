@@ -24,7 +24,7 @@ logger = logging.getLogger("tam_copilot.crud")
 
 def _block_viewer_write(user: AdminUser) -> None:
     if user.role == "viewer":
-        raise HTTPException(403, "Perfil somente leitura")
+        raise HTTPException(403, "Read-only profile")
 
 
 def build_account_child_router(

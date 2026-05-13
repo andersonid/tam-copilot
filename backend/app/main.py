@@ -113,6 +113,18 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass
 
+        for col, typedef in (
+            ("has_tam", "BOOLEAN DEFAULT 0"),
+            ("csm_name", "VARCHAR(255)"),
+            ("csm_sso_username", "VARCHAR(100)"),
+            ("strategic", "BOOLEAN DEFAULT 0"),
+        ):
+            try:
+                await conn.execute(_text(f"ALTER TABLE accounts ADD COLUMN {col} {typedef}"))
+                logger.info("startup.migration | accounts.%s added", col)
+            except Exception:
+                pass
+
         for tbl in ("account_entitlements", "account_assignments"):
             try:
                 await conn.execute(

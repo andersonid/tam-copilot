@@ -55,6 +55,35 @@ class SyncService:
                 best_len = len(needle)
         return best_id
 
+    # -- Account metadata (Hydra) ----------------------------------------------
+
+    async def sync_account_metadata(self, db: AsyncSession, account: Account) -> dict[str, str | bool | None]:
+        """Pull hasTAM, CSM info, and strategic flag from Hydra get_account."""
+        if not self.hydra:
+            raise RuntimeError("Hydra client not configured")
+
+        data = await self.hydra.get_account(account.account_number)
+        if isinstance(data, dict) and data.get("error"):
+            logger.warning("sync.account_meta | account=%s error=%s", account.account_number, data.get("status"))
+            return {}
+
+        account.has_tam = bool(data.get("hasTAM", False))
+        account.csm_name = data.get("csmUserName") or None
+        account.csm_sso_username = data.get("csmUserSSOName") or None
+        account.strategic = bool(data.get("strategic", False))
+
+        await db.commit()
+        logger.info(
+            "sync.account_meta | account=%s has_tam=%s csm=%s strategic=%s",
+            account.account_number, account.has_tam, account.csm_name, account.strategic,
+        )
+        return {
+            "has_tam": account.has_tam,
+            "csm_name": account.csm_name,
+            "csm_sso_username": account.csm_sso_username,
+            "strategic": account.strategic,
+        }
+
     # -- Entitlements (Hydra) --------------------------------------------------
 
     async def sync_entitlements(self, db: AsyncSession, account: Account) -> int:
@@ -235,6 +264,7 @@ class SyncService:
         """Run all sync operations for an account."""
         results: dict[str, int] = {}
         if self.hydra:
+            await self.sync_account_metadata(db, account)
             results["entitlements"] = await self.sync_entitlements(db, account)
             results["contacts"] = await self.sync_contacts(db, account)
         if self.ocm:
