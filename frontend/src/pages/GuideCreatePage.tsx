@@ -27,6 +27,7 @@ import {
   CodeBlock,
   CodeBlockCode,
   Icon,
+  Switch,
 } from "@patternfly/react-core";
 import { ExclamationTriangleIcon } from "@patternfly/react-icons";
 import api from "../services/api";
@@ -66,6 +67,7 @@ export function GuideCreatePage() {
   const [notes, setNotes] = useState("");
   const [tagsStr, setTagsStr] = useState("");
 
+  const [useKcsRag, setUseKcsRag] = useState(false);
   const [similar, setSimilar] = useState<SimilarGuide[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -129,6 +131,7 @@ export function GuideCreatePage() {
           .map((t) => t.trim())
           .filter(Boolean),
         kcs_subtype: isKcs ? kcsSubtype || "solution" : undefined,
+        use_kcs_rag: useKcsRag,
       };
       const { data } = await api.post("/guides", payload);
       navigate(`/guides/${data.id}`);
@@ -305,6 +308,20 @@ export function GuideCreatePage() {
           <TextInput id="tags" value={tagsStr} onChange={(_e, v) => setTagsStr(v)} />
           <HelperText>
             <HelperTextItem>Comma-separated</HelperTextItem>
+          </HelperText>
+        </FormGroup>
+
+        <FormGroup label="KCS RAG" fieldId="kcs-rag">
+          <Switch
+            id="kcs-rag"
+            label="Enrich with KCS articles"
+            isChecked={useKcsRag}
+            onChange={(_e, checked) => setUseKcsRag(checked)}
+          />
+          <HelperText>
+            <HelperTextItem>
+              Searches Red Hat Knowledge Base for relevant articles and includes them as context for the LLM
+            </HelperTextItem>
           </HelperText>
         </FormGroup>
 

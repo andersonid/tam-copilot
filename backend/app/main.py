@@ -26,8 +26,15 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger("tam_copilot.app")
 
 
+import httpx  # noqa: E402
+
+_sync_service: "SyncService | None" = None  # populated during startup
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _sync_service
+
     logger.info("startup | data_dir=%s static_dir=%s", settings.data_dir, settings.static_dir)
     Path(settings.data_dir).mkdir(parents=True, exist_ok=True)
     settings.html_dir
@@ -55,8 +62,34 @@ async def lifespan(app: FastAPI):
             pass
     async with async_session() as db:
         await seed_data(db)
+
+    # Initialize Red Hat API clients when SSO token is available
+    from .services.redhat_auth import RedHatAuth
+    from .services.hydra_client import HydraClient
+    from .services.ocm_client import OcmClient
+    from .services.lifecycle_client import LifecycleClient
+    from .services.sync import SyncService
+
+    http = httpx.AsyncClient(verify=False, timeout=settings.api_timeout)
+    hydra_client, ocm_client, lifecycle_client = None, None, None
+
+    if settings.hydra_offline_token:
+        auth = RedHatAuth(settings.hydra_offline_token, http)
+        hydra_client = HydraClient(settings.hydra_base_url, auth, http)
+        ocm_client = OcmClient(settings.ocm_base_url, auth, http)
+        logger.info("startup.api | hydra + ocm clients initialized")
+    else:
+        logger.warning("startup.api | HYDRA_OFFLINE_TOKEN not set — sync disabled")
+
+    lifecycle_client = LifecycleClient(settings.lifecycle_base_url, http)
+
+    _sync_service = SyncService(hydra_client, ocm_client, lifecycle_client)
     logger.info("startup.complete | ready to serve")
+
     yield
+
+    await http.aclose()
+    _sync_service = None
     logger.info("shutdown | disposing engine")
     await engine.dispose()
 
@@ -71,18 +104,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from .routers import health, customers, products, document_types, guides, providers, search, analytics, auth  # noqa: E402
+from .routers import (  # noqa: E402
+    health, customers, products, document_types, guides, providers,
+    search, analytics, auth,
+    accounts, clusters, entitlements, contacts, issues,
+    action_plans, touchpoints, risks, engagements, lifecycle, nps,
+    sync, reports, kcs,
+)
 from .auth import get_current_user  # noqa: E402
+
+_auth_dep = [Depends(get_current_user)]
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(health.router, prefix="/api")
-app.include_router(customers.router, prefix="/api", dependencies=[Depends(get_current_user)])
-app.include_router(products.router, prefix="/api", dependencies=[Depends(get_current_user)])
-app.include_router(document_types.router, prefix="/api", dependencies=[Depends(get_current_user)])
-app.include_router(guides.router, prefix="/api", dependencies=[Depends(get_current_user)])
-app.include_router(providers.router, prefix="/api", dependencies=[Depends(get_current_user)])
-app.include_router(search.router, prefix="/api", dependencies=[Depends(get_current_user)])
-app.include_router(analytics.router, prefix="/api", dependencies=[Depends(get_current_user)])
+
+# Account management (new)
+app.include_router(accounts.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(clusters.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(entitlements.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(contacts.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(issues.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(action_plans.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(touchpoints.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(risks.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(engagements.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(lifecycle.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(nps.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(sync.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(reports.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(kcs.router, prefix="/api", dependencies=_auth_dep)
+
+# Content generation & legacy (existing)
+app.include_router(customers.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(products.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(document_types.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(guides.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(providers.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(search.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(analytics.router, prefix="/api", dependencies=_auth_dep)
 
 from .database import get_db, async_session as _async_session  # noqa: E402 (re-import for routes below)
 from .models import Guide as _Guide  # noqa: E402

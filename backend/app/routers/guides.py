@@ -106,10 +106,28 @@ async def create_guide(data: GuideCreate, db: AsyncSession = Depends(get_db)):
         slug, data.kcs_subtype, len(system_prompt), len(user_msg) + len(data.input_notes),
     )
 
+    # --- Optional KCS RAG enrichment ---
+    kcs_context = ""
+    if data.use_kcs_rag:
+        try:
+            from ..main import _sync_service
+            if _sync_service and _sync_service.hydra:
+                from ..services.kcs_search import KcsSearchService
+                kcs_svc = KcsSearchService(_sync_service.hydra)
+                kcs_context = await kcs_svc.build_rag_context(
+                    data.input_notes[:500],
+                    product=product.name if product else "",
+                )
+                logger.info("guide.create.rag | kcs_context_len=%d", len(kcs_context))
+        except Exception as rag_err:
+            logger.warning("guide.create.rag_failed | error=%s", rag_err)
+
+    enriched_notes = kcs_context + data.input_notes if kcs_context else data.input_notes
+
     # --- LLM call (fail fast — nothing saved yet) ---
     try:
         t_llm = time.perf_counter()
-        structured = await client.generate_structured(system_prompt, user_msg + "\n\n" + data.input_notes, model)
+        structured = await client.generate_structured(system_prompt, user_msg + "\n\n" + enriched_notes, model)
         llm_elapsed = time.perf_counter() - t_llm
         section_count = len(structured.get("sections", []))
         logger.info(
