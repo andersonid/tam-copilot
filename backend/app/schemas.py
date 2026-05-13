@@ -7,18 +7,63 @@ search, and analytics.
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 # ---------------------------------------------------------------------------
 # Accounts
 # ---------------------------------------------------------------------------
 
+class VerticalRead(BaseModel):
+    id: int
+    name: str
+    is_active: bool
+    model_config = {"from_attributes": True}
+
+
+class SegmentRead(BaseModel):
+    id: int
+    name: str
+    is_active: bool
+    model_config = {"from_attributes": True}
+
+
+class ProductMiniRead(BaseModel):
+    id: int
+    name: str
+    model_config = {"from_attributes": True}
+
+
+class AccountAssignmentRead(BaseModel):
+    id: int
+    account_id: int
+    user_id: int
+    username: str | None = None
+    full_name: str | None = None
+    assignment_type: str
+    specialization: str | None
+    is_primary: bool
+    assigned_at: datetime
+    product_id: int | None = None
+    product: ProductMiniRead | None = None
+    model_config = {"from_attributes": True}
+
+
+class AccountAssignmentCreate(BaseModel):
+    user_id: int
+    assignment_type: str = Field(min_length=2, max_length=20)
+    specialization: str | None = Field(None, max_length=20)
+    is_primary: bool = False
+    product_id: int | None = None
+
+
 class AccountCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     account_number: str = Field(min_length=1, max_length=50)
     region: str | None = None
     country: str | None = None
+    vertical_id: int | None = None
+    segment_id: int | None = None
     tam_user_id: int | None = None
     tam_type: str | None = None
     service_days_json: str | None = None
@@ -29,6 +74,8 @@ class AccountUpdate(BaseModel):
     name: str | None = None
     region: str | None = None
     country: str | None = None
+    vertical_id: int | None = None
+    segment_id: int | None = None
     tam_user_id: int | None = None
     tam_type: str | None = None
     service_days_json: str | None = None
@@ -42,12 +89,17 @@ class AccountRead(BaseModel):
     account_number: str
     region: str | None
     country: str | None
+    vertical_id: int | None
+    segment_id: int | None
+    vertical: VerticalRead | None = None
+    segment: SegmentRead | None = None
     tam_user_id: int | None
     tam_type: str | None
     notes: str | None
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    assignments: list[AccountAssignmentRead] = Field(default_factory=list)
     model_config = {"from_attributes": True}
 
 class AccountListRead(BaseModel):
@@ -58,8 +110,108 @@ class AccountListRead(BaseModel):
     country: str | None
     tam_type: str | None
     is_active: bool
+    vertical_id: int | None = None
+    segment_id: int | None = None
+    vertical_name: str | None = None
+    segment_name: str | None = None
+    tam_user_id: int | None = None
+    assignments_summary: str | None = None
+    team_leads_summary: str | None = None
     created_at: datetime
     model_config = {"from_attributes": True}
+
+
+class SubscriptionCoverageAssignmentOut(BaseModel):
+    id: int
+    user_id: int
+    username: str | None
+    full_name: str | None
+    assignment_type: str
+    specialization: str | None
+    product_id: int | None
+    product_name: str | None
+
+
+class SubscriptionCoverageEntitlementOut(BaseModel):
+    id: int
+    entitlement_name: str
+    sku: str | None
+    product_id: int | None
+    product_name: str | None
+    support_level: str | None
+    end_date: date | None
+
+
+class SubscriptionCoverageProductBucket(BaseModel):
+    product_id: int | None
+    product_name: str | None
+    assignments: list[SubscriptionCoverageAssignmentOut]
+    entitlements: list[SubscriptionCoverageEntitlementOut]
+
+
+class SubscriptionCoverageResponse(BaseModel):
+    account_id: int
+    account_number: str
+    account_name: str
+    buckets: list[SubscriptionCoverageProductBucket]
+
+
+class TeamMemberRead(BaseModel):
+    id: int
+    username: str
+    full_name: str | None
+    email: str | None
+    role: str
+    tam_type: str | None
+    is_active: bool
+    manager_id: int | None
+    account_count: int = 0
+    model_config = {"from_attributes": True}
+
+
+class TeamMemberUpdate(BaseModel):
+    manager_id: int | None = None
+    is_active: bool | None = None
+    role: str | None = Field(None, max_length=20)
+
+
+# ---------------------------------------------------------------------------
+# Admin user management (admin role only)
+# ---------------------------------------------------------------------------
+
+class AdminUserRead(BaseModel):
+    id: int
+    username: str
+    full_name: str | None
+    email: str | None
+    role: str
+    tam_type: str | None
+    manager_id: int | None
+    manager_username: str | None = None
+    is_active: bool
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class AdminUserCreate(BaseModel):
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=4, max_length=200)
+    role: str = Field(min_length=1, max_length=20)
+    full_name: str | None = Field(None, max_length=255)
+    email: str | None = Field(None, max_length=255)
+    tam_type: str | None = Field(None, max_length=50)
+    manager_id: int | None = None
+    is_active: bool = True
+
+
+class AdminUserUpdate(BaseModel):
+    full_name: str | None = Field(None, max_length=255)
+    email: str | None = Field(None, max_length=255)
+    role: str | None = Field(None, max_length=20)
+    tam_type: str | None = Field(None, max_length=50)
+    manager_id: int | None = None
+    is_active: bool | None = None
+    password: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +289,7 @@ class EntitlementCreate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     quantity: int | None = 1
+    product_id: int | None = None
 
 class EntitlementUpdate(BaseModel):
     entitlement_name: str | None = None
@@ -146,6 +299,7 @@ class EntitlementUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     quantity: int | None = None
+    product_id: int | None = None
 
 class EntitlementRead(BaseModel):
     id: int
@@ -158,6 +312,11 @@ class EntitlementRead(BaseModel):
     end_date: date | None
     quantity: int | None
     synced_at: datetime
+    product_id: int | None = None
+    product: ProductMiniRead | None = Field(
+        default=None,
+        validation_alias=AliasChoices("catalog_product", "product"),
+    )
     model_config = {"from_attributes": True}
 
 

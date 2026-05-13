@@ -9,6 +9,13 @@ export interface AccountSummary {
   country: string | null;
   tam_type: string | null;
   is_active: boolean;
+  vertical_id?: number | null;
+  segment_id?: number | null;
+  vertical_name?: string | null;
+  segment_name?: string | null;
+  tam_user_id?: number | null;
+  assignments_summary?: string | null;
+  team_leads_summary?: string | null;
 }
 
 interface AccountContextState {

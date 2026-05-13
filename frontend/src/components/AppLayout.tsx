@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Page,
@@ -40,7 +40,6 @@ import {
   ExclamationTriangleIcon,
   ChartBarIcon,
   FileAltIcon,
-  BookOpenIcon,
   PlusCircleIcon,
   UploadIcon,
   CogIcon,
@@ -49,15 +48,18 @@ import {
   AdjustIcon,
   GlobeIcon,
   UserIcon,
+  DatabaseIcon,
 } from "@patternfly/react-icons";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useAccount } from "../context/AccountContext";
+import { hasManagerPortfolio, isManagerPortfolioPath } from "../navigation/rbac";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { username, logout } = useAuth();
+  const { username, logout, role, isAdmin } = useAuth();
+  const showGestao = hasManagerPortfolio(role);
   const { theme, toggleTheme } = useTheme();
   const { selectedAccountId, selectedAccount, accounts, setSelectedAccountId } = useAccount();
 
@@ -69,9 +71,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const [contentExpanded, setContentExpanded] = useState(
     location.pathname.startsWith("/content") || location.pathname.startsWith("/guides"),
   );
+  const [mgmtExpanded, setMgmtExpanded] = useState(() => isManagerPortfolioPath(location.pathname));
   const [adminExpanded, setAdminExpanded] = useState(
-    ["/admin/providers", "/admin/settings", "/customers", "/providers"].includes(location.pathname),
+    ["/customers", "/providers", "/admin/users"].includes(location.pathname),
   );
+
+  useEffect(() => {
+    if (isManagerPortfolioPath(location.pathname)) {
+      setMgmtExpanded(true);
+    }
+    if (["/customers", "/providers", "/admin/users"].includes(location.pathname)) {
+      setAdminExpanded(true);
+    }
+  }, [location.pathname]);
 
   const handleSearch = () => {
     if (searchValue.trim()) {
@@ -252,6 +264,33 @@ export function AppLayout({ children }: { children: ReactNode }) {
               Dashboard
             </NavItem>
 
+            <NavItem isActive={isActive("/accounts")} onClick={() => navTo("/accounts")}>
+              <DatabaseIcon style={{ marginRight: 8 }} />
+              Accounts
+            </NavItem>
+
+            {showGestao && (
+              <NavExpandable
+                title="Management"
+                isActive={isManagerPortfolioPath(location.pathname)}
+                isExpanded={mgmtExpanded}
+                onExpand={(_e, val) => setMgmtExpanded(val)}
+              >
+                <NavItem isActive={isActive("/team")} onClick={() => navTo("/team")}>
+                  <UsersIcon style={{ marginRight: 8 }} />
+                  Team
+                </NavItem>
+                <NavItem isActive={isActive("/action-plans")} onClick={() => navTo("/action-plans")}>
+                  <ListIcon style={{ marginRight: 8 }} />
+                  Action plans (portfolio)
+                </NavItem>
+                <NavItem isActive={isActive("/reports")} onClick={() => navTo("/reports")}>
+                  <ClipboardCheckIcon style={{ marginRight: 8 }} />
+                  Reports
+                </NavItem>
+              </NavExpandable>
+            )}
+
             <NavItem isActive={isActive("/cases")} onClick={() => navTo("/cases")}>
               <ListIcon style={{ marginRight: 8 }} />
               Cases
@@ -341,25 +380,29 @@ export function AppLayout({ children }: { children: ReactNode }) {
               Search
             </NavItem>
 
-            {/* Manager dashboard — visible to all for now, role-gating later */}
-            <NavItem isActive={isActive("/manager")} onClick={() => navTo("/manager")}>
-              <BookOpenIcon style={{ marginRight: 8 }} />
-              Manager
-            </NavItem>
-
             <Divider style={{ margin: "8px 0" }} />
 
-            <NavExpandable
-              title="Administration"
-              isActive={["/admin/providers", "/admin/settings", "/customers", "/providers"].includes(location.pathname)}
-              isExpanded={adminExpanded}
-              onExpand={(_e, val) => setAdminExpanded(val)}
-            >
-              <NavItem isActive={isActive("/providers")} onClick={() => navTo("/providers")}>
-                <CogIcon style={{ marginRight: 8 }} />
-                LLM Providers
-              </NavItem>
-            </NavExpandable>
+            {isAdmin && (
+              <NavExpandable
+                title="Administration"
+                isActive={["/customers", "/providers", "/admin/users"].includes(location.pathname)}
+                isExpanded={adminExpanded}
+                onExpand={(_e, val) => setAdminExpanded(val)}
+              >
+                <NavItem isActive={isActive("/admin/users")} onClick={() => navTo("/admin/users")}>
+                  <UserIcon style={{ marginRight: 8 }} />
+                  Users
+                </NavItem>
+                <NavItem isActive={isActive("/customers")} onClick={() => navTo("/customers")}>
+                  <UsersIcon style={{ marginRight: 8 }} />
+                  Customers
+                </NavItem>
+                <NavItem isActive={isActive("/providers")} onClick={() => navTo("/providers")}>
+                  <CogIcon style={{ marginRight: 8 }} />
+                  LLM Providers
+                </NavItem>
+              </NavExpandable>
+            )}
           </NavList>
         </Nav>
       </PageSidebarBody>

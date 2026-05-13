@@ -13,9 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..access import ensure_account_access
+from ..auth import get_current_user
 from ..config import settings
 from ..database import get_db
-from ..models import Account, Guide, DocumentType, Customer, Product
+from ..models import Account, AdminUser, Guide, DocumentType, Customer, Product
 from ..services.report_compiler import compile_tam_report
 from ..services.renderer import render_guide
 
@@ -33,8 +35,15 @@ router = APIRouter(prefix="/v1/reports", tags=["Reports"])
         "TAM Report and saves it as a Guide record."
     ),
 )
-async def generate_tam_report(account_id: int, db: AsyncSession = Depends(get_db)):
+async def generate_tam_report(
+    account_id: int,
+    user: AdminUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Generate a comprehensive TAM Report for the given account."""
+    if user.role == "viewer":
+        raise HTTPException(403, "Perfil somente leitura")
+    await ensure_account_access(db, user, account_id)
     account = await db.scalar(select(Account).where(Account.id == account_id))
     if not account:
         raise HTTPException(404, f"Account {account_id} not found")

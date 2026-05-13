@@ -1,8 +1,9 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AccountProvider } from "./context/AccountContext";
 import { AppLayout } from "./components/AppLayout";
+import { hasManagerPortfolio } from "./navigation/rbac";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { AccountsPage } from "./pages/AccountsPage";
@@ -15,8 +16,10 @@ import { ContactsPage } from "./pages/ContactsPage";
 import { LifecyclePage } from "./pages/LifecyclePage";
 import { TouchpointsPage } from "./pages/TouchpointsPage";
 import { RisksPage } from "./pages/RisksPage";
-import { EngagementPage } from "./pages/EngagementPage";
-import { ManagerPage } from "./pages/ManagerPage";
+import { EngagementRoutePage } from "./pages/EngagementRoutePage";
+import { TeamPage } from "./pages/TeamPage";
+import { ManagerActionPlansPage } from "./pages/ManagerActionPlansPage";
+import { ManagerReportsPage } from "./pages/ManagerReportsPage";
 import { GuidesPage } from "./pages/GuidesPage";
 import { GuideCreatePage } from "./pages/GuideCreatePage";
 import { GuideDetailPage } from "./pages/GuideDetailPage";
@@ -27,9 +30,12 @@ import { SearchPage } from "./pages/SearchPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { PublicGuidePage } from "./pages/PublicGuidePage";
 import { TamReportPage } from "./pages/TamReportPage";
+import { AdminUsersPage } from "./pages/AdminUsersPage";
 
 function AuthenticatedApp() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
+  const mgmt = hasManagerPortfolio(role);
+  const isAdmin = role === "admin";
 
   if (!isAuthenticated) {
     return <LoginPage />;
@@ -39,13 +45,10 @@ function AuthenticatedApp() {
     <AccountProvider>
       <AppLayout>
         <Routes>
-          {/* Dashboard */}
           <Route path="/" element={<DashboardPage />} />
 
-          {/* Account management */}
           <Route path="/accounts" element={<AccountsPage />} />
 
-          {/* Contextual pages (filtered by account context switcher) */}
           <Route path="/cases" element={<CasesPage />} />
           <Route path="/clusters" element={<ClustersPage />} />
           <Route path="/issues" element={<IssuesPage />} />
@@ -55,12 +58,27 @@ function AuthenticatedApp() {
           <Route path="/lifecycle" element={<LifecyclePage />} />
           <Route path="/touchpoints" element={<TouchpointsPage />} />
           <Route path="/risks" element={<RisksPage />} />
-          <Route path="/engagement" element={<EngagementPage />} />
+          <Route path="/engagement" element={<EngagementRoutePage />} />
 
-          {/* Manager dashboard */}
-          <Route path="/manager" element={<ManagerPage />} />
+          {mgmt && (
+            <>
+              <Route path="/team" element={<TeamPage />} />
+              <Route path="/action-plans" element={<ManagerActionPlansPage />} />
+              <Route path="/reports" element={<ManagerReportsPage />} />
+            </>
+          )}
 
-          {/* Content generation (evolved from Guides) */}
+          <Route path="/manager" element={<Navigate to={mgmt ? "/team" : "/"} replace />} />
+          <Route
+            path="/manager/action-plans"
+            element={<Navigate to={mgmt ? "/action-plans" : "/"} replace />}
+          />
+          <Route path="/manager/engagement" element={<Navigate to="/engagement" replace />} />
+          <Route
+            path="/manager/reports"
+            element={<Navigate to={mgmt ? "/reports" : "/"} replace />}
+          />
+
           <Route path="/content" element={<GuidesPage />} />
           <Route path="/content/report" element={<TamReportPage />} />
           <Route path="/guides" element={<GuidesPage />} />
@@ -68,11 +86,18 @@ function AuthenticatedApp() {
           <Route path="/guides/import" element={<GuideImportPage />} />
           <Route path="/guides/:id" element={<GuideDetailPage />} />
 
-          {/* Administration */}
-          <Route path="/customers" element={<CustomersPage />} />
-          <Route path="/providers" element={<ProvidersPage />} />
+          {isAdmin && (
+            <>
+              <Route path="/customers" element={<CustomersPage />} />
+              <Route path="/providers" element={<ProvidersPage />} />
+              <Route path="/admin/users" element={<AdminUsersPage />} />
+            </>
+          )}
+
           <Route path="/search" element={<SearchPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppLayout>
     </AccountProvider>

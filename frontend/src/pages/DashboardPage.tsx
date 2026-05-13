@@ -12,9 +12,11 @@ import {
 } from "@patternfly/react-icons";
 import SyncAltIcon from "@patternfly/react-icons/dist/esm/icons/sync-alt-icon";
 import { useAccount } from "../context/AccountContext";
+import { useAuth } from "../context/AuthContext";
 import { useSync } from "../hooks/useSync";
 import api from "../services/api";
 import type { AnalyticsOverview, ChartDataPoint } from "../types/models";
+import { ManagerPortfolioDashboard } from "./ManagerPortfolioDashboard";
 
 interface RecentGuide {
   id: number;
@@ -28,10 +30,15 @@ interface RecentGuide {
 
 export function DashboardPage() {
   const { selectedAccountId, selectedAccount, accounts } = useAccount();
+  const { role } = useAuth();
 
-  return selectedAccountId && selectedAccount
-    ? <AccountDashboard accountId={selectedAccountId} account={selectedAccount} />
-    : <GlobalDashboard totalAccounts={accounts.length} />;
+  if (selectedAccountId && selectedAccount) {
+    return <AccountDashboard accountId={selectedAccountId} account={selectedAccount} />;
+  }
+  if (role === "manager" || role === "admin") {
+    return <ManagerPortfolioDashboard />;
+  }
+  return <GlobalDashboard totalAccounts={accounts.length} />;
 }
 
 function AccountDashboard({ accountId, account }: { accountId: number; account: any }) {

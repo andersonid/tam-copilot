@@ -6,10 +6,16 @@ if (savedToken) {
   api.defaults.headers.common["Authorization"] = `Bearer ${savedToken}`;
 }
 
+export type UserRole = "admin" | "manager" | "tam" | "viewer";
+
 interface AuthState {
   token: string | null;
   username: string | null;
+  role: UserRole;
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  isManager: boolean;
+  isManagerOrAdmin: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -17,7 +23,11 @@ interface AuthState {
 const AuthContext = createContext<AuthState>({
   token: null,
   username: null,
+  role: "tam",
   isAuthenticated: false,
+  isAdmin: false,
+  isManager: false,
+  isManagerOrAdmin: false,
   login: async () => {},
   logout: () => {},
 });
@@ -25,6 +35,7 @@ const AuthContext = createContext<AuthState>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(savedToken);
   const [username, setUsername] = useState<string | null>(() => localStorage.getItem("tam_user"));
+  const [role, setRole] = useState<UserRole>(() => (localStorage.getItem("tam_role") as UserRole) || "tam");
 
   useEffect(() => {
     if (token) {
@@ -43,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUsername(null);
           localStorage.removeItem("tam_token");
           localStorage.removeItem("tam_user");
+          localStorage.removeItem("tam_role");
         }
         return Promise.reject(err);
       },
@@ -52,23 +64,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (user: string, pass: string) => {
     const { data } = await api.post("/auth/login", { username: user, password: pass });
+    const userRole = (data.role || "tam") as UserRole;
     setToken(data.access_token);
     setUsername(data.username);
+    setRole(userRole);
     localStorage.setItem("tam_token", data.access_token);
     localStorage.setItem("tam_user", data.username);
+    localStorage.setItem("tam_role", userRole);
     api.defaults.headers.common["Authorization"] = `Bearer ${data.access_token}`;
   };
 
   const logout = () => {
     setToken(null);
     setUsername(null);
+    setRole("tam");
     localStorage.removeItem("tam_token");
     localStorage.removeItem("tam_user");
+    localStorage.removeItem("tam_role");
     delete api.defaults.headers.common["Authorization"];
   };
 
+  const isAdmin = role === "admin";
+  const isManager = role === "manager";
+  const isManagerOrAdmin = role === "admin" || role === "manager";
+
   return (
-    <AuthContext.Provider value={{ token, username, isAuthenticated: !!token, login, logout }}>
+    <AuthContext.Provider value={{ token, username, role, isAuthenticated: !!token, isAdmin, isManager, isManagerOrAdmin, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

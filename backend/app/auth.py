@@ -29,13 +29,25 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(username: str) -> str:
+def create_access_token(username: str, role: str = "tam") -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     return jwt.encode(
-        {"sub": username, "exp": expire},
+        {"sub": username, "role": role, "exp": expire},
         settings.secret_key,
         algorithm=ALGORITHM,
     )
+
+
+def require_role(*allowed_roles: str):
+    """Dependency that restricts access to users with one of the given roles."""
+    async def _check(user: AdminUser = Depends(get_current_user)) -> AdminUser:
+        if user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires role: {', '.join(allowed_roles)}",
+            )
+        return user
+    return _check
 
 
 async def get_current_user(

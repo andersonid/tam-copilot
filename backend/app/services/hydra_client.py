@@ -37,21 +37,42 @@ class HydraClient:
 
     # -- Accounts (search / details) -------------------------------------------
 
-    async def search_accounts(self, query: str, rows: int = 10) -> list[dict]:
-        """Search customer accounts by name or number via Hydra."""
-        data = await self._get("/v1/accounts", params={"keyword": query, "limit": rows})
+    async def search_accounts_by_name(self, name: str, rows: int = 10) -> list[dict]:
+        """Discover accounts by name using the SOLR case search index.
+
+        The Hydra Case Management API (confirmed via official Swagger at
+        developers.redhat.com/api-catalog/api/case-management) does NOT
+        expose a free-text account search endpoint.  The only account
+        endpoints are direct lookups by number.
+
+        As a workaround we search the SOLR case index — which contains
+        ``case_account_name`` and ``case_accountNumber`` fields — and
+        extract unique accounts from the results.
+        """
+        data = await self._get(
+            "/search/cases",
+            params={"q": name, "rows": min(rows * 3, 50), "start": 0},
+        )
         if isinstance(data, dict) and data.get("error"):
             return []
-        if isinstance(data, list):
-            return data
-        return data.get("items", data.get("account", []))
+
+        docs = data.get("response", {}).get("docs", [])
+        seen: dict[str, dict] = {}
+        for doc in docs:
+            acct = doc.get("case_accountNumber", "")
+            acct_name = doc.get("case_account_name", "")
+            if acct and acct not in seen and name.lower() in acct_name.lower():
+                seen[acct] = {
+                    "accountNumber": acct,
+                    "name": acct_name,
+                }
+            if len(seen) >= rows:
+                break
+        return list(seen.values())
 
     async def get_account(self, account_number: str) -> dict:
         """Fetch full account details by account number."""
-        data = await self._get(f"/v1/accounts/{account_number}")
-        if isinstance(data, dict) and data.get("error"):
-            return data
-        return data
+        return await self._get(f"/v1/accounts/{account_number}")
 
     # -- Cases -----------------------------------------------------------------
 

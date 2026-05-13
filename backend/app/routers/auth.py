@@ -22,6 +22,7 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     username: str
+    role: str = "tam"
 
 
 class PasswordChangeRequest(BaseModel):
@@ -38,9 +39,9 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
         )
-    token = create_access_token(user.username)
-    logger.info("auth.login.success | username=%s", user.username)
-    return LoginResponse(access_token=token, username=user.username)
+    token = create_access_token(user.username, role=user.role or "tam")
+    logger.info("auth.login.success | username=%s role=%s", user.username, user.role)
+    return LoginResponse(access_token=token, username=user.username, role=user.role or "tam")
 
 
 @router.post("/change-password")
@@ -59,4 +60,9 @@ async def change_password(
 
 @router.get("/me")
 async def get_me(current_user: AdminUser = Depends(get_current_user)):
-    return {"username": current_user.username}
+    return {
+        "username": current_user.username,
+        "role": current_user.role or "tam",
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+    }

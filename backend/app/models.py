@@ -20,6 +20,7 @@ from sqlalchemy import (
     LargeBinary,
     ForeignKey,
     Table,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import relationship
@@ -41,6 +42,34 @@ guide_tags = Table(
     Column("guide_id", Integer, ForeignKey("guides.id", ondelete="CASCADE"), primary_key=True),
     Column("tag_id", Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
 )
+
+
+# ---------------------------------------------------------------------------
+# Reference data: vertical & segment (customer classification)
+# ---------------------------------------------------------------------------
+
+class Vertical(Base):
+    """Commercial / Enterprise / Government vertical — editable reference list."""
+
+    __tablename__ = "verticals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, unique=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    accounts = relationship("Account", back_populates="vertical_ref")
+
+
+class Segment(Base):
+    """Industry segment (FSI, Telecom, etc.) — editable reference list."""
+
+    __tablename__ = "segments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, unique=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    accounts = relationship("Account", back_populates="segment_ref")
 
 
 # ---------------------------------------------------------------------------
@@ -67,10 +96,18 @@ class AdminUser(Base):
     certifications_json = Column(Text, nullable=True)  # JSON list of {name, date, expiry}
     skills_tags = Column(Text, nullable=True)  # comma-separated specialties
     service_days_config_json = Column(Text, nullable=True)
+    manager_id = Column(Integer, ForeignKey("admin_users.id"), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    accounts = relationship("Account", back_populates="tam_user")
+    accounts = relationship("Account", back_populates="tam_user", foreign_keys="Account.tam_user_id")
+    manager = relationship(
+        "AdminUser",
+        remote_side=[id],
+        foreign_keys=[manager_id],
+        backref="team_members",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +124,8 @@ class Account(Base):
     account_number = Column(String(50), nullable=False, unique=True, index=True)
     region = Column(String(100), nullable=True)
     country = Column(String(100), nullable=True)
+    vertical_id = Column(Integer, ForeignKey("verticals.id"), nullable=True)
+    segment_id = Column(Integer, ForeignKey("segments.id"), nullable=True)
     tam_user_id = Column(Integer, ForeignKey("admin_users.id"), nullable=True)
     tam_type = Column(String(50), nullable=True)
     service_days_json = Column(Text, nullable=True)  # JSON with Mon-Fri service config
@@ -96,7 +135,14 @@ class Account(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    tam_user = relationship("AdminUser", back_populates="accounts")
+    tam_user = relationship("AdminUser", back_populates="accounts", foreign_keys=[tam_user_id])
+    vertical_ref = relationship("Vertical", back_populates="accounts")
+    segment_ref = relationship("Segment", back_populates="accounts")
+    assignments = relationship(
+        "AccountAssignment",
+        back_populates="account",
+        cascade="all, delete-orphan",
+    )
     clusters = relationship("AccountCluster", back_populates="account", cascade="all, delete-orphan")
     entitlements = relationship("AccountEntitlement", back_populates="account", cascade="all, delete-orphan")
     contacts = relationship("AccountContact", back_populates="account", cascade="all, delete-orphan")
@@ -108,6 +154,30 @@ class Account(Base):
     nps_surveys = relationship("NpsSurvey", back_populates="account", cascade="all, delete-orphan")
     lifecycle_entries = relationship("ProductLifecycle", back_populates="account", cascade="all, delete-orphan")
     guides = relationship("Guide", back_populates="account")
+
+
+class AccountAssignment(Base):
+    """N:N link between Account and platform user (TAM, team lead, CS, etc.)."""
+
+    __tablename__ = "account_assignments"
+    __table_args__ = (
+        UniqueConstraint("account_id", "user_id", "assignment_type", name="uq_account_user_assignment_type"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("admin_users.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
+    assignment_type = Column(String(20), nullable=False)  # tam | team_lead | cs | sa | backup
+    specialization = Column(String(20), nullable=True)  # OCP, PLT, MW, CSA, ...
+    is_primary = Column(Boolean, nullable=False, default=False)
+    assigned_at = Column(DateTime, server_default=func.now())
+    assigned_by_id = Column(Integer, ForeignKey("admin_users.id"), nullable=True)
+
+    account = relationship("Account", back_populates="assignments")
+    user = relationship("AdminUser", foreign_keys=[user_id], backref="account_assignments")
+    assigned_by = relationship("AdminUser", foreign_keys=[assigned_by_id])
+    catalog_product = relationship("Product", foreign_keys=[product_id], back_populates="account_assignments")
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +224,7 @@ class AccountEntitlement(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True, index=True)
     sku = Column(String(100), nullable=True)
     entitlement_name = Column(String(500), nullable=False)
     service_level = Column(String(100), nullable=True)
@@ -164,6 +235,7 @@ class AccountEntitlement(Base):
     synced_at = Column(DateTime, server_default=func.now())
 
     account = relationship("Account", back_populates="entitlements")
+    catalog_product = relationship("Product", foreign_keys=[product_id], back_populates="account_entitlements")
 
 
 # ---------------------------------------------------------------------------
@@ -405,6 +477,8 @@ class Product(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     guides = relationship("Guide", back_populates="product")
+    account_entitlements = relationship("AccountEntitlement", back_populates="catalog_product")
+    account_assignments = relationship("AccountAssignment", back_populates="catalog_product")
 
 
 class DocumentType(Base):

@@ -71,6 +71,20 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass
 
+        for col, typedef in (
+            ("manager_id", "INTEGER REFERENCES admin_users(id)"),
+            ("is_active", "BOOLEAN DEFAULT 1 NOT NULL"),
+        ):
+            try:
+                await conn.execute(_text(f"ALTER TABLE admin_users ADD COLUMN {col} {typedef}"))
+                logger.info("startup.migration | admin_users.%s added", col)
+            except Exception:
+                pass
+        try:
+            await conn.execute(_text("UPDATE admin_users SET is_active = 1 WHERE is_active IS NULL"))
+        except Exception:
+            pass
+
         _guide_cols = [
             ("access_token", "VARCHAR(64) DEFAULT ''"),
             ("account_id", "INTEGER REFERENCES accounts(id)"),
@@ -81,6 +95,45 @@ async def lifespan(app: FastAPI):
                 logger.info("startup.migration | guides.%s added", col)
             except Exception:
                 pass
+
+        # Rename touchpoints.date -> touchpoints.touchpoint_date (SQLite)
+        try:
+            await conn.execute(_text("ALTER TABLE touchpoints RENAME COLUMN date TO touchpoint_date"))
+            logger.info("startup.migration | touchpoints.date renamed to touchpoint_date")
+        except Exception:
+            pass
+
+        for col, typedef in (
+            ("vertical_id", "INTEGER REFERENCES verticals(id)"),
+            ("segment_id", "INTEGER REFERENCES segments(id)"),
+        ):
+            try:
+                await conn.execute(_text(f"ALTER TABLE accounts ADD COLUMN {col} {typedef}"))
+                logger.info("startup.migration | accounts.%s added", col)
+            except Exception:
+                pass
+
+        for tbl in ("account_entitlements", "account_assignments"):
+            try:
+                await conn.execute(
+                    _text(f"ALTER TABLE {tbl} ADD COLUMN product_id INTEGER REFERENCES products(id)")
+                )
+                logger.info("startup.migration | %s.product_id added", tbl)
+            except Exception:
+                pass
+
+        # Backfill account_assignments from legacy tam_user_id
+        try:
+            await conn.execute(_text("""
+                INSERT OR IGNORE INTO account_assignments
+                (account_id, user_id, assignment_type, specialization, is_primary, assigned_at, assigned_by_id)
+                SELECT id, tam_user_id, 'tam', NULL, 1, datetime('now'), NULL
+                FROM accounts
+                WHERE tam_user_id IS NOT NULL
+            """))
+            logger.info("startup.migration | account_assignments backfilled from tam_user_id")
+        except Exception as e:
+            logger.debug("startup.migration | account_assignments backfill skipped: %s", e)
 
         # Backfill empty access tokens
         try:
@@ -141,7 +194,8 @@ app.add_middleware(
 from .routers import (  # noqa: E402
     health, customers, products, document_types, guides, providers,
     search, analytics, auth,
-    accounts, clusters, entitlements, contacts, issues,
+    accounts, verticals, segments, team, manager, admin_users,
+    clusters, entitlements, contacts, issues,
     action_plans, touchpoints, risks, engagements, lifecycle, nps,
     sync, reports, kcs,
 )
@@ -154,6 +208,11 @@ app.include_router(health.router, prefix="/api")
 
 # Account management (new)
 app.include_router(accounts.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(verticals.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(segments.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(team.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(admin_users.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(manager.router, prefix="/api", dependencies=_auth_dep)
 app.include_router(clusters.router, prefix="/api", dependencies=_auth_dep)
 app.include_router(entitlements.router, prefix="/api", dependencies=_auth_dep)
 app.include_router(contacts.router, prefix="/api", dependencies=_auth_dep)

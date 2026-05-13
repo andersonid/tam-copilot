@@ -12,6 +12,63 @@ Technical guide generator for Red Hat TAMs (Technical Account Managers). Transfo
 - **Dashboard analytics** — guides per month, per customer, per product
 - **Customer & product management** — organize guides by client and Red Hat product
 
+## Data model (summary)
+
+Core TAM platform entities: customer accounts (`Account`), users (`AdminUser` with roles `admin`, `manager`, `tam`, `viewer`), many-to-many assignments (`AccountAssignment` — TAM, team lead, CS, etc.), **vertical** and **segment** reference tables, and per-account operational data (clusters, entitlements, action plans, touchpoints, engagement, NPS, …).
+
+```mermaid
+erDiagram
+    AdminUser ||--o{ AdminUser : "manager_id"
+    AdminUser ||--o{ AccountAssignment : "user_id"
+    Account ||--o{ AccountAssignment : "account_id"
+    Account }o--o| Vertical : "vertical_id"
+    Account }o--o| Segment : "segment_id"
+    Account ||--o{ ActionPlan : ""
+    Account ||--o{ Engagement : ""
+
+    AdminUser {
+        int id PK
+        string username UK
+        string role
+        int manager_id FK
+        boolean is_active
+    }
+    Account {
+        int id PK
+        string account_number UK
+        string name
+        int vertical_id FK
+        int segment_id FK
+        int tam_user_id FK
+    }
+    AccountAssignment {
+        int id PK
+        int account_id FK
+        int user_id FK
+        string assignment_type
+        string specialization
+    }
+    Vertical {
+        int id PK
+        string name UK
+    }
+    Segment {
+        int id PK
+        string name UK
+    }
+```
+
+### Manager portfolio APIs
+
+- `GET /api/manager/summary` — aggregated counts (accounts, team, action plans).
+- `GET /api/manager/action-plans` — paginated cross-account list.
+- `GET /api/manager/engagement` — engagement by account/area/year.
+- `GET /api/manager/reports` — action plan distribution by status and product.
+- `GET/POST/PATCH /api/verticals` and `/api/segments` — reference tables.
+- `GET/PATCH /api/team/members` — manager's team.
+- `GET/POST/DELETE /api/accounts/.../assignments` — account assignments.
+- `GET /api/admin/users`, `POST /api/admin/users`, `PATCH /api/admin/users/{id}` — user administration (**admin** only; SPA `/admin/users`).
+
 ## Architecture
 
 ```
@@ -28,7 +85,7 @@ Technical guide generator for Red Hat TAMs (Technical Account Managers). Transfo
 
 | Layer | Stack |
 |-------|-------|
-| Frontend | React 18, Vite, TypeScript, PatternFly v5 |
+| Frontend | React 18, Vite, TypeScript, PatternFly v6 |
 | Backend | FastAPI, SQLAlchemy 2.0 (async), Pydantic v2 |
 | Database | SQLite + aiosqlite, FTS5, Alembic migrations |
 | LLM | OpenAI SDK (LiteMaaS), Anthropic SDK, Google GenAI |

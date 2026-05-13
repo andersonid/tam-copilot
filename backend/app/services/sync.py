@@ -17,6 +17,7 @@ from ..models import (
     AccountCluster,
     AccountContact,
     AccountEntitlement,
+    Product,
     ProductLifecycle,
 )
 from .hydra_client import HydraClient
@@ -39,6 +40,21 @@ class SyncService:
         self.ocm = ocm
         self.lifecycle = lifecycle
 
+    async def _guess_entitlement_product_id(
+        self, db: AsyncSession, entitlement_name: str, sku: str | None
+    ) -> int | None:
+        """Map Hydra entitlement text to a catalog Product row (longest name match)."""
+        blob = f"{entitlement_name} {sku or ''}".lower()
+        products = (await db.execute(select(Product).order_by(Product.name))).scalars().all()
+        best_id: int | None = None
+        best_len = 0
+        for p in products:
+            needle = (p.name or "").lower()
+            if needle and needle in blob and len(needle) > best_len:
+                best_id = p.id
+                best_len = len(needle)
+        return best_id
+
     # -- Entitlements (Hydra) --------------------------------------------------
 
     async def sync_entitlements(self, db: AsyncSession, account: Account) -> int:
@@ -56,10 +72,14 @@ class SyncService:
 
         count = 0
         for item in raw:
+            name = item.get("name", item.get("entitlementName", "Unknown"))
+            sku = item.get("sku", item.get("skuNumber", "")) or None
+            pid = await self._guess_entitlement_product_id(db, str(name), sku)
             ent = AccountEntitlement(
                 account_id=account.id,
-                sku=item.get("sku", item.get("skuNumber", "")),
-                entitlement_name=item.get("name", item.get("entitlementName", "Unknown")),
+                product_id=pid,
+                sku=sku,
+                entitlement_name=name,
                 service_level=item.get("serviceLevel", ""),
                 support_level=item.get("supportLevel", ""),
                 start_date=_parse_date(item.get("startDate")),
