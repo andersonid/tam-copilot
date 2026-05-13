@@ -87,7 +87,7 @@ erDiagram
 |-------|-------|
 | Frontend | React 18, Vite, TypeScript, PatternFly v6 |
 | Backend | FastAPI, SQLAlchemy 2.0 (async), Pydantic v2 |
-| Database | SQLite + aiosqlite, FTS5, Alembic migrations |
+| Database | PostgreSQL 17 + pgvector, asyncpg, Alembic migrations |
 | LLM | OpenAI SDK (LiteMaaS), Anthropic SDK, Google GenAI |
 | Search | nomic-embed-text-v1-5 embeddings, numpy cosine similarity |
 
@@ -98,22 +98,29 @@ erDiagram
 git clone git@github.com:andersonid/tam-copilot.git
 cd tam-copilot
 
-# Create .env
-cp .env.example .env
-# Edit .env with your LiteMaaS API key
+# Start PostgreSQL (pgvector)
+podman-compose up -d db
 
-# Run with podman-compose
-podman-compose up --build
+# Backend
+cd backend
+cp .env.example .env          # edit with your keys
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+
+# Frontend (separate terminal)
+cd frontend
+npm install && npm run dev
 ```
 
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8000/api/health
+- PostgreSQL: `localhost:5432` (user/pass: `tamcopilot`)
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | SQLAlchemy database URI | `sqlite+aiosqlite:///./data/tam_copilot.db` |
+| `DATABASE_URL` | SQLAlchemy database URI | `postgresql+asyncpg://tamcopilot:tamcopilot@localhost:5432/tam_copilot` |
 | `DATA_DIR` | Directory for data/html storage | `./data` |
 | `SECRET_KEY` | Encryption key for API keys at rest | (required) |
 | `DEFAULT_PROVIDER_NAME` | Default LLM provider display name | `LiteMaaS` |

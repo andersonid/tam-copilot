@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite+aiosqlite:///./data/tam_copilot.db"
+    database_url: str = "postgresql+asyncpg://tamcopilot:tamcopilot@localhost:5432/tam_copilot"
     data_dir: str = "./data"
     secret_key: str = "change-me-in-production"
     static_dir: str = "./static"

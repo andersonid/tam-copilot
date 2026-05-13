@@ -1,0 +1,16 @@
+services:
+  db:
+    image: docker.io/pgvector/pgvector:pg17
+    container_name: tam-copilot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tamcopilot
+      POSTGRES_PASSWORD: tamcopilot
+      POSTGRES_DB: tam_copilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

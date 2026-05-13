@@ -40,20 +40,35 @@ async def lifespan(app: FastAPI):
     settings.html_dir
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        await conn.execute(
-            __import__("sqlalchemy").text(
-                "CREATE VIRTUAL TABLE IF NOT EXISTS guide_fts "
-                "USING fts5(title, input_notes, content='guides', content_rowid='id')"
-            )
-        )
 
-        # Inline migrations: add columns missing from older SQLite schemas.
-        # Each ALTER is wrapped individually — duplicate-column errors are
-        # silently ignored so the startup is idempotent.
+        _is_sqlite = str(engine.url).startswith("sqlite")
+        if _is_sqlite:
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        "CREATE VIRTUAL TABLE IF NOT EXISTS guide_fts "
+                        "USING fts5(title, input_notes, content='guides', content_rowid='id')"
+                    )
+                )
+            except Exception:
+                pass
+
+        # Inline migrations: add columns that may be missing in older schemas.
+        # Each statement runs inside a savepoint so a failure (e.g. column
+        # already exists) doesn't abort the whole transaction (PostgreSQL).
         import secrets as _secrets
         _text = __import__("sqlalchemy").text
 
-        _admin_cols = [
+        async def _try_exec(sql: str, label: str = ""):
+            try:
+                async with conn.begin_nested():
+                    await conn.execute(_text(sql))
+                if label:
+                    logger.info("startup.migration | %s", label)
+            except Exception:
+                pass
+
+        for col, typedef in [
             ("email", "VARCHAR(255)"),
             ("full_name", "VARCHAR(255)"),
             ("sso_username", "VARCHAR(100)"),
@@ -62,101 +77,72 @@ async def lifespan(app: FastAPI):
             ("certifications_json", "TEXT"),
             ("skills_tags", "TEXT"),
             ("service_days_config_json", "TEXT"),
-            ("updated_at", "DATETIME"),
-        ]
-        for col, typedef in _admin_cols:
-            try:
-                await conn.execute(_text(f"ALTER TABLE admin_users ADD COLUMN {col} {typedef}"))
-                logger.info("startup.migration | admin_users.%s added", col)
-            except Exception:
-                pass
-
-        for col, typedef in (
+            ("updated_at", "TIMESTAMP"),
             ("manager_id", "INTEGER REFERENCES admin_users(id)"),
-            ("is_active", "BOOLEAN DEFAULT 1 NOT NULL"),
-        ):
-            try:
-                await conn.execute(_text(f"ALTER TABLE admin_users ADD COLUMN {col} {typedef}"))
-                logger.info("startup.migration | admin_users.%s added", col)
-            except Exception:
-                pass
-        try:
-            await conn.execute(_text("UPDATE admin_users SET is_active = 1 WHERE is_active IS NULL"))
-        except Exception:
-            pass
+            ("is_active", "BOOLEAN DEFAULT TRUE NOT NULL"),
+        ]:
+            await _try_exec(
+                f"ALTER TABLE admin_users ADD COLUMN {col} {typedef}",
+                f"admin_users.{col} added",
+            )
+        await _try_exec(
+            "UPDATE admin_users SET is_active = TRUE WHERE is_active IS NULL",
+        )
 
-        _guide_cols = [
+        for col, typedef in [
             ("access_token", "VARCHAR(64) DEFAULT ''"),
             ("account_id", "INTEGER REFERENCES accounts(id)"),
-        ]
-        for col, typedef in _guide_cols:
-            try:
-                await conn.execute(_text(f"ALTER TABLE guides ADD COLUMN {col} {typedef}"))
-                logger.info("startup.migration | guides.%s added", col)
-            except Exception:
-                pass
+        ]:
+            await _try_exec(
+                f"ALTER TABLE guides ADD COLUMN {col} {typedef}",
+                f"guides.{col} added",
+            )
 
-        # Rename touchpoints.date -> touchpoints.touchpoint_date (SQLite)
-        try:
-            await conn.execute(_text("ALTER TABLE touchpoints RENAME COLUMN date TO touchpoint_date"))
-            logger.info("startup.migration | touchpoints.date renamed to touchpoint_date")
-        except Exception:
-            pass
+        await _try_exec(
+            "ALTER TABLE touchpoints RENAME COLUMN date TO touchpoint_date",
+            "touchpoints.date renamed",
+        )
 
-        for col, typedef in (
+        for col, typedef in [
             ("vertical_id", "INTEGER REFERENCES verticals(id)"),
             ("segment_id", "INTEGER REFERENCES segments(id)"),
-        ):
-            try:
-                await conn.execute(_text(f"ALTER TABLE accounts ADD COLUMN {col} {typedef}"))
-                logger.info("startup.migration | accounts.%s added", col)
-            except Exception:
-                pass
-
-        for col, typedef in (
-            ("has_tam", "BOOLEAN DEFAULT 0"),
+            ("has_tam", "BOOLEAN DEFAULT FALSE"),
             ("csm_name", "VARCHAR(255)"),
             ("csm_sso_username", "VARCHAR(100)"),
-            ("strategic", "BOOLEAN DEFAULT 0"),
-        ):
-            try:
-                await conn.execute(_text(f"ALTER TABLE accounts ADD COLUMN {col} {typedef}"))
-                logger.info("startup.migration | accounts.%s added", col)
-            except Exception:
-                pass
+            ("strategic", "BOOLEAN DEFAULT FALSE"),
+        ]:
+            await _try_exec(
+                f"ALTER TABLE accounts ADD COLUMN {col} {typedef}",
+                f"accounts.{col} added",
+            )
 
         for tbl in ("account_entitlements", "account_assignments"):
-            try:
-                await conn.execute(
-                    _text(f"ALTER TABLE {tbl} ADD COLUMN product_id INTEGER REFERENCES products(id)")
-                )
-                logger.info("startup.migration | %s.product_id added", tbl)
-            except Exception:
-                pass
+            await _try_exec(
+                f"ALTER TABLE {tbl} ADD COLUMN product_id INTEGER REFERENCES products(id)",
+                f"{tbl}.product_id added",
+            )
 
-        # Backfill account_assignments from legacy tam_user_id
-        try:
-            await conn.execute(_text("""
-                INSERT OR IGNORE INTO account_assignments
-                (account_id, user_id, assignment_type, specialization, is_primary, assigned_at, assigned_by_id)
-                SELECT id, tam_user_id, 'tam', NULL, 1, datetime('now'), NULL
-                FROM accounts
-                WHERE tam_user_id IS NOT NULL
-            """))
-            logger.info("startup.migration | account_assignments backfilled from tam_user_id")
-        except Exception as e:
-            logger.debug("startup.migration | account_assignments backfill skipped: %s", e)
+        await _try_exec(
+            """INSERT INTO account_assignments
+               (account_id, user_id, assignment_type, specialization, is_primary, assigned_at, assigned_by_id)
+               SELECT id, tam_user_id, 'tam', NULL, TRUE, NOW(), NULL
+               FROM accounts WHERE tam_user_id IS NOT NULL
+               ON CONFLICT (account_id, user_id, assignment_type) DO NOTHING""",
+            "account_assignments backfilled from tam_user_id",
+        )
 
-        # Backfill empty access tokens
         try:
-            rows = (await conn.execute(_text("SELECT id FROM guides WHERE access_token = '' OR access_token IS NULL"))).fetchall()
-            for row in rows:
-                await conn.execute(
-                    _text("UPDATE guides SET access_token = :t WHERE id = :id"),
-                    {"t": _secrets.token_urlsafe(24), "id": row[0]},
-                )
-            if rows:
-                logger.info("startup.migration | backfilled access_token for %d guides", len(rows))
+            async with conn.begin_nested():
+                rows = (await conn.execute(_text(
+                    "SELECT id FROM guides WHERE access_token = '' OR access_token IS NULL"
+                ))).fetchall()
+                for row in rows:
+                    await conn.execute(
+                        _text("UPDATE guides SET access_token = :t WHERE id = :id"),
+                        {"t": _secrets.token_urlsafe(24), "id": row[0]},
+                    )
+                if rows:
+                    logger.info("startup.migration | backfilled access_token for %d guides", len(rows))
         except Exception:
             pass
     async with async_session() as db:

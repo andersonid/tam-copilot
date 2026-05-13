@@ -17,10 +17,7 @@ import app.models  # noqa: F401 — ensure models registered on Base.metadata
 
 config = context.config
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-db_path = PROJECT_ROOT / "data" / "tam_copilot.db"
-db_path.parent.mkdir(parents=True, exist_ok=True)
-config.set_main_option("sqlalchemy.url", f"sqlite+aiosqlite:///{db_path}")
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -35,7 +32,6 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        render_as_batch=True,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -45,7 +41,6 @@ def do_run_migrations(connection):
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
-        render_as_batch=True,
     )
     with context.begin_transaction():
         context.run_migrations()
