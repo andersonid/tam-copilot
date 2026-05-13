@@ -35,6 +35,24 @@ class HydraClient:
             return {"error": True, "status": resp.status_code, "detail": resp.text[:500]}
         return resp.json()
 
+    # -- Accounts (search / details) -------------------------------------------
+
+    async def search_accounts(self, query: str, rows: int = 10) -> list[dict]:
+        """Search customer accounts by name or number via Hydra."""
+        data = await self._get("/v1/accounts", params={"keyword": query, "limit": rows})
+        if isinstance(data, dict) and data.get("error"):
+            return []
+        if isinstance(data, list):
+            return data
+        return data.get("items", data.get("account", []))
+
+    async def get_account(self, account_number: str) -> dict:
+        """Fetch full account details by account number."""
+        data = await self._get(f"/v1/accounts/{account_number}")
+        if isinstance(data, dict) and data.get("error"):
+            return data
+        return data
+
     # -- Cases -----------------------------------------------------------------
 
     async def list_cases(
