@@ -46,18 +46,52 @@ async def lifespan(app: FastAPI):
                 "USING fts5(title, input_notes, content='guides', content_rowid='id')"
             )
         )
+
+        # Inline migrations: add columns missing from older SQLite schemas.
+        # Each ALTER is wrapped individually — duplicate-column errors are
+        # silently ignored so the startup is idempotent.
+        import secrets as _secrets
+        _text = __import__("sqlalchemy").text
+
+        _admin_cols = [
+            ("email", "VARCHAR(255)"),
+            ("full_name", "VARCHAR(255)"),
+            ("sso_username", "VARCHAR(100)"),
+            ("role", "VARCHAR(20) DEFAULT 'tam'"),
+            ("tam_type", "VARCHAR(50)"),
+            ("certifications_json", "TEXT"),
+            ("skills_tags", "TEXT"),
+            ("service_days_config_json", "TEXT"),
+            ("updated_at", "DATETIME"),
+        ]
+        for col, typedef in _admin_cols:
+            try:
+                await conn.execute(_text(f"ALTER TABLE admin_users ADD COLUMN {col} {typedef}"))
+                logger.info("startup.migration | admin_users.%s added", col)
+            except Exception:
+                pass
+
+        _guide_cols = [
+            ("access_token", "VARCHAR(64) DEFAULT ''"),
+            ("account_id", "INTEGER REFERENCES accounts(id)"),
+        ]
+        for col, typedef in _guide_cols:
+            try:
+                await conn.execute(_text(f"ALTER TABLE guides ADD COLUMN {col} {typedef}"))
+                logger.info("startup.migration | guides.%s added", col)
+            except Exception:
+                pass
+
+        # Backfill empty access tokens
         try:
-            await conn.execute(__import__("sqlalchemy").text(
-                "ALTER TABLE guides ADD COLUMN access_token VARCHAR(64) DEFAULT ''"
-            ))
-            import secrets
-            rows = (await conn.execute(__import__("sqlalchemy").text("SELECT id FROM guides WHERE access_token = ''"))).fetchall()
+            rows = (await conn.execute(_text("SELECT id FROM guides WHERE access_token = '' OR access_token IS NULL"))).fetchall()
             for row in rows:
                 await conn.execute(
-                    __import__("sqlalchemy").text("UPDATE guides SET access_token = :t WHERE id = :id"),
-                    {"t": secrets.token_urlsafe(24), "id": row[0]},
+                    _text("UPDATE guides SET access_token = :t WHERE id = :id"),
+                    {"t": _secrets.token_urlsafe(24), "id": row[0]},
                 )
-            logger.info("startup.migration | added access_token column, backfilled %d rows", len(rows))
+            if rows:
+                logger.info("startup.migration | backfilled access_token for %d guides", len(rows))
         except Exception:
             pass
     async with async_session() as db:
