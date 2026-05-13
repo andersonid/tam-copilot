@@ -1,29 +1,43 @@
+# TAM-Copilot — local development stack (Podman / Docker)
+#
+# Usage:
+#   podman compose up              — start backend + frontend with hot-reload
+#   podman compose up backend      — backend only (if you run Vite natively)
+#   podman compose up --build      — rebuild images after Dockerfile/deps changes
+#   podman compose down            — stop everything
+#
+# Backend:  http://localhost:8000  (API + Swagger at /docs)
+# Frontend: http://localhost:5173  (Vite HMR, proxies /api → backend)
+#
+# Both services use host networking for simplicity (no DNS or port
+# mapping issues). Vite proxy reaches backend at localhost:8000.
+
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile
       target: backend-dev
-    ports:
-      - "8000:8000"
+    network_mode: host
     volumes:
-      - ./backend:/app/backend:Z
+      - ./backend:/app:Z
       - ./data:/app/data:Z
-      - ./.env:/app/.env:Z
+      - ./backend/templates:/app/templates:Z
+    env_file: .env
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./data/tam_copilot.db
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    working_dir: /app/backend
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/tam_copilot.db
+      - DATA_DIR=/app/data
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0 --port 8000
+      --reload --reload-dir /app/app
+    restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    ports:
-      - "5173:5173"
+    image: node:22-alpine
+    working_dir: /app
+    network_mode: host
     volumes:
-      - ./frontend/src:/app/src:Z
-      - ./frontend/index.html:/app/index.html:Z
-    command: npm run dev -- --host 0.0.0.0
-    depends_on:
-      - backend
+      - ./frontend:/app:Z
+    command: sh -c "npm install --prefer-offline && npm run dev -- --host 0.0.0.0"
+    restart: unless-stopped
