@@ -46,7 +46,7 @@ export function EntitlementsPage() {
           <ToolbarItem align={{ default: "alignEnd" }}>
             {selectedAccountId && (
               <Button variant="secondary" icon={<SyncAltIcon />} isLoading={syncing} isDisabled={syncing} onClick={handleSync}>
-                Sync from Hydra
+                Sync subscriptions (OCM)
               </Button>
             )}
           </ToolbarItem>
@@ -57,7 +57,7 @@ export function EntitlementsPage() {
         <EmptyState>
           <EmptyStateBody>
             {selectedAccountId
-              ? "No entitlements recorded. Click \"Sync from Hydra\" to pull data."
+              ? "No entitlements recorded. Click \"Sync subscriptions (OCM)\" to pull OpenShift subscriptions for this account's organization."
               : "Select an account to view entitlements."}
           </EmptyStateBody>
         </EmptyState>

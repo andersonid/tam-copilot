@@ -61,8 +61,12 @@ async def sync_account_metadata(
 
 @router.post(
     "/entitlements",
-    summary="Sync entitlements from Hydra",
-    description="Pulls subscription entitlements for the account via Hydra API.",
+    summary="Sync subscription entitlements from OCM",
+    description=(
+        "Replaces cached entitlements with OpenShift subscriptions from OCM "
+        "(organization resolved by ebs_account_id = Red Hat account number). "
+        "The Hydra Support public API does not expose a per-account entitlement list."
+    ),
 )
 async def sync_entitlements(
     account_id: int,
@@ -72,7 +76,10 @@ async def sync_entitlements(
     _viewer_block(user)
     svc = _get_sync_service()
     account = await _get_account(account_id, db, user)
-    count = await svc.sync_entitlements(db, account)
+    try:
+        count = await svc.sync_entitlements(db, account)
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
     return {"synced": count, "domain": "entitlements", "account_id": account_id}
 
 
@@ -91,6 +98,23 @@ async def sync_contacts(
     account = await _get_account(account_id, db, user)
     count = await svc.sync_contacts(db, account)
     return {"synced": count, "domain": "contacts", "account_id": account_id}
+
+
+@router.post(
+    "/cases",
+    summary="Sync support cases from Hydra",
+    description="Pulls all support cases for the account from the Hydra API.",
+)
+async def sync_cases(
+    account_id: int,
+    user: AdminUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _viewer_block(user)
+    svc = _get_sync_service()
+    account = await _get_account(account_id, db, user)
+    count = await svc.sync_cases(db, account)
+    return {"synced": count, "domain": "cases", "account_id": account_id}
 
 
 @router.post(

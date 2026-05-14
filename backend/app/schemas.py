@@ -381,6 +381,37 @@ class ContactRead(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Support Cases
+# ---------------------------------------------------------------------------
+
+class CaseRead(BaseModel):
+    id: int
+    account_id: int
+    case_number: str
+    summary: str
+    status: str
+    severity: str | None
+    product: str | None
+    version: str | None
+    case_type: str | None
+    owner: str | None
+    contact_name: str | None
+    contact_sso: str | None
+    sla: str | None
+    sbr_groups: str | None
+    is_proactive: bool
+    is_escalated: bool
+    cluster_id: str | None
+    created_date: datetime | None
+    last_modified_date: datetime | None
+    last_modified_by: str | None
+    closed_date: datetime | None
+    resolution: str | None
+    synced_at: datetime
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
 # Issues
 # ---------------------------------------------------------------------------
 
@@ -450,6 +481,8 @@ class ActionPlanCreate(BaseModel):
     business_impact: str | None = None
     risk_level: str | None = None
     customer_owner: str | None = None
+    customer_area: str | None = None
+    contact_classification: str | None = None
     tam_name: str | None = None
     dee_name: str | None = None
     product: str | None = None
@@ -469,6 +502,8 @@ class ActionPlanUpdate(BaseModel):
     business_impact: str | None = None
     risk_level: str | None = None
     customer_owner: str | None = None
+    customer_area: str | None = None
+    contact_classification: str | None = None
     tam_name: str | None = None
     dee_name: str | None = None
     product: str | None = None
@@ -490,6 +525,8 @@ class ActionPlanRead(BaseModel):
     business_impact: str | None
     risk_level: str | None
     customer_owner: str | None
+    customer_area: str | None = None
+    contact_classification: str | None = None
     tam_name: str | None
     dee_name: str | None
     product: str | None
@@ -571,7 +608,7 @@ class RiskRead(BaseModel):
 # ---------------------------------------------------------------------------
 
 class EngagementCreate(BaseModel):
-    customer_area: str = Field(min_length=1, max_length=100)
+    customer_area: str | None = None
     adoption_difficulty: str | None = None
     customer_knowledge: str | None = None
     team_turnover: str | None = None
@@ -597,7 +634,7 @@ class EngagementUpdate(BaseModel):
 class EngagementRead(BaseModel):
     id: int
     account_id: int
-    customer_area: str
+    customer_area: str | None
     adoption_difficulty: str | None
     customer_knowledge: str | None
     team_turnover: str | None

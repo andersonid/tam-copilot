@@ -25,7 +25,7 @@ services:
       - ./backend/templates:/app/templates:Z
     env_file: .env
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:////app/data/tam_copilot.db
+      - DATABASE_URL=postgresql+asyncpg://tamcopilot:tamcopilot@localhost:5432/tam_copilot
       - DATA_DIR=/app/data
     command: >
       uvicorn app.main:app

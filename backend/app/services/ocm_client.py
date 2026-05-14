@@ -43,6 +43,13 @@ class OcmClient:
             "/api/accounts_mgmt/v1/organizations",
             params={"search": f"ebs_account_id='{ebs_account_id}'"},
         )
+        if isinstance(data, dict) and data.get("error"):
+            logger.warning(
+                "ocm find_org_by_ebs_account | ebs=%s http=%s",
+                ebs_account_id,
+                data.get("status"),
+            )
+            return None
         items = data.get("items", []) if isinstance(data, dict) else []
         return items[0] if items else None
 
@@ -53,15 +60,40 @@ class OcmClient:
         org_id: str = "",
         search: str = "",
         size: int = 100,
+        page: int = 1,
     ) -> list[dict]:
         """Fetch subscriptions with telemetry metrics."""
-        params: dict[str, Any] = {"size": size, "order": "last_telemetry_date desc"}
+        params: dict[str, Any] = {
+            "size": min(size, 100),
+            "page": page,
+            "order": "last_telemetry_date desc",
+        }
         if org_id:
             params["search"] = f"organization_id='{org_id}'"
         elif search:
             params["search"] = search
         data = await self._get("/api/accounts_mgmt/v1/subscriptions", params=params)
+        if isinstance(data, dict) and data.get("error"):
+            logger.error("ocm list_subscriptions | page=%s http=%s", page, data.get("status"))
+            return []
         return data.get("items", []) if isinstance(data, dict) else []
+
+    async def list_all_subscriptions_for_organization(self, org_id: str, page_size: int = 100) -> list[dict]:
+        """Fetch all subscriptions for an organization (paginated)."""
+        out: list[dict] = []
+        page = 1
+        while True:
+            batch = await self.list_subscriptions(org_id=org_id, size=page_size, page=page)
+            if not batch:
+                break
+            out.extend(batch)
+            if len(batch) < page_size:
+                break
+            page += 1
+            if page > 500:
+                logger.warning("ocm list_all_subscriptions | org=%s truncated at %d pages", org_id, page)
+                break
+        return out
 
     # -- Clusters --------------------------------------------------------------
 

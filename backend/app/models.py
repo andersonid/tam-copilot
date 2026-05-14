@@ -134,6 +134,7 @@ class Account(Base):
     csm_name = Column(String(255), nullable=True)
     csm_sso_username = Column(String(100), nullable=True)
     strategic = Column(Boolean, nullable=False, default=False)
+    toolkit_sheet_id = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, server_default=func.now())
@@ -150,6 +151,7 @@ class Account(Base):
     clusters = relationship("AccountCluster", back_populates="account", cascade="all, delete-orphan")
     entitlements = relationship("AccountEntitlement", back_populates="account", cascade="all, delete-orphan")
     contacts = relationship("AccountContact", back_populates="account", cascade="all, delete-orphan")
+    cases = relationship("SupportCase", back_populates="account", cascade="all, delete-orphan")
     issues = relationship("AccountIssue", back_populates="account", cascade="all, delete-orphan")
     action_plans = relationship("ActionPlan", back_populates="account", cascade="all, delete-orphan")
     touchpoints = relationship("Touchpoint", back_populates="account", cascade="all, delete-orphan")
@@ -222,7 +224,7 @@ class AccountCluster(Base):
 # ---------------------------------------------------------------------------
 
 class AccountEntitlement(Base):
-    """Subscription entitlement — cached from Hydra API."""
+    """Subscription entitlement — cached from OCM subscriptions or manual/import."""
 
     __tablename__ = "account_entitlements"
 
@@ -269,6 +271,42 @@ class AccountContact(Base):
     synced_at = Column(DateTime, server_default=func.now())
 
     account = relationship("Account", back_populates="contacts")
+
+
+# ---------------------------------------------------------------------------
+# SupportCase (Hydra cache)
+# ---------------------------------------------------------------------------
+
+class SupportCase(Base):
+    """Red Hat support case — cached from Hydra API."""
+
+    __tablename__ = "support_cases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    case_number = Column(String(20), nullable=False, index=True, unique=True)
+    summary = Column(Text, nullable=False)
+    status = Column(String(50), nullable=False)
+    severity = Column(String(50), nullable=True)
+    product = Column(String(255), nullable=True)
+    version = Column(String(50), nullable=True)
+    case_type = Column(String(50), nullable=True)
+    owner = Column(String(255), nullable=True)
+    contact_name = Column(String(255), nullable=True)
+    contact_sso = Column(String(100), nullable=True)
+    sla = Column(String(50), nullable=True)
+    sbr_groups = Column(Text, nullable=True)
+    is_proactive = Column(Boolean, nullable=False, default=False)
+    is_escalated = Column(Boolean, nullable=False, default=False)
+    cluster_id = Column(String(100), nullable=True)
+    created_date = Column(DateTime, nullable=True)
+    last_modified_date = Column(DateTime, nullable=True)
+    last_modified_by = Column(String(255), nullable=True)
+    closed_date = Column(DateTime, nullable=True)
+    resolution = Column(String(255), nullable=True)
+    synced_at = Column(DateTime, server_default=func.now())
+
+    account = relationship("Account", back_populates="cases")
 
 
 # ---------------------------------------------------------------------------
@@ -321,6 +359,8 @@ class ActionPlan(Base):
     business_impact = Column(String(50), nullable=True)
     risk_level = Column(String(50), nullable=True)
     customer_owner = Column(String(255), nullable=True)
+    customer_area = Column(String(255), nullable=True)
+    contact_classification = Column(String(100), nullable=True)
     tam_name = Column(String(255), nullable=True)
     dee_name = Column(String(255), nullable=True)
     product = Column(String(255), nullable=True)
@@ -391,7 +431,7 @@ class Engagement(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
-    customer_area = Column(String(100), nullable=False)
+    customer_area = Column(String(100), nullable=True)
     adoption_difficulty = Column(String(50), nullable=True)
     customer_knowledge = Column(String(50), nullable=True)
     team_turnover = Column(String(50), nullable=True)

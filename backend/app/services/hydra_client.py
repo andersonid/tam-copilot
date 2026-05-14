@@ -35,6 +35,15 @@ class HydraClient:
             return {"error": True, "status": resp.status_code, "detail": resp.text[:500]}
         return resp.json()
 
+    async def _post(self, path: str, body: dict | None = None) -> Any:
+        url = f"{self._base}{path}"
+        headers = await self._headers()
+        resp = await self._http.post(url, headers=headers, json=body or {})
+        if resp.status_code >= 400:
+            logger.error("hydra POST %s -> %d", path, resp.status_code)
+            return {"error": True, "status": resp.status_code, "detail": resp.text[:500]}
+        return resp.json()
+
     # -- Accounts (search / details) -------------------------------------------
 
     async def search_accounts_by_name(self, name: str, rows: int = 10) -> list[dict]:
@@ -77,16 +86,28 @@ class HydraClient:
     # -- Cases -----------------------------------------------------------------
 
     async def list_cases(
-        self, account_number: str, status: str = "", count: int = 500,
+        self,
+        account_number: str,
+        include_closed: bool = True,
+        max_results: int = 500,
+        sort_field: str = "lastModifiedDate",
+        sort_order: str = "DESC",
     ) -> list[dict]:
-        """Fetch support cases for an account."""
-        params: dict[str, Any] = {"account_number": account_number, "count": count}
-        if status:
-            params["status"] = status
-        data = await self._get("/v1/cases", params=params)
+        """Fetch support cases via POST /v1/cases/filter."""
+        body: dict[str, Any] = {
+            "accountNumber": account_number,
+            "includeClosed": include_closed,
+            "maxResults": max_results,
+            "offset": 0,
+            "sortField": sort_field,
+            "sortOrder": sort_order,
+        }
+        data = await self._post("/v1/cases/filter", body)
         if isinstance(data, dict) and data.get("error"):
             return []
-        return data if isinstance(data, list) else data.get("items", data.get("case", []))
+        if isinstance(data, dict):
+            return data.get("cases", data.get("case", []))
+        return data if isinstance(data, list) else []
 
     async def get_case(self, case_number: str) -> dict:
         return await self._get(f"/v1/cases/{case_number}")
@@ -103,7 +124,12 @@ class HydraClient:
     # -- Entitlements ----------------------------------------------------------
 
     async def list_entitlements(self, account_number: str) -> list[dict]:
-        """Fetch entitlements for an account."""
+        """Legacy path ``/v1/accounts/{number}/entitlements`` (not in public Support API).
+
+        The Case Management OpenAPI catalog does not publish this route; callers
+        typically receive HTTP 404 and an empty list. Prefer OCM subscription
+        sync for OpenShift entitlements.
+        """
         data = await self._get(f"/v1/accounts/{account_number}/entitlements")
         if isinstance(data, dict) and data.get("error"):
             return []

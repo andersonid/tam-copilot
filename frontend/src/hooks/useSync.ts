@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import api from "../services/api";
 
-type SyncDomain = "entitlements" | "contacts" | "clusters" | "lifecycle" | "all";
+type SyncDomain = "entitlements" | "contacts" | "clusters" | "cases" | "lifecycle" | "all";
 
 interface SyncResult {
   synced: number;

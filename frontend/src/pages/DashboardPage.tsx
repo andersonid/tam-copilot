@@ -48,6 +48,7 @@ function AccountDashboard({ accountId, account }: { accountId: number; account: 
   const [actionPlans, setActionPlans] = useState<any[]>([]);
   const [touchpoints, setTouchpoints] = useState<any[]>([]);
   const [entitlements, setEntitlements] = useState<any[]>([]);
+  const [cases, setCases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { triggerSync, syncing, error: syncError } = useSync(accountId);
 
@@ -60,12 +61,14 @@ function AccountDashboard({ accountId, account }: { accountId: number; account: 
       api.get("/action-plans", { params: p }),
       api.get("/touchpoints", { params: p }),
       api.get("/entitlements", { params: p }),
-    ]).then(([cl, ri, ap, tp, en]) => {
+      api.get("/cases", { params: p }),
+    ]).then(([cl, ri, ap, tp, en, cs]) => {
       setClusters(cl.data);
       setRisks(ri.data);
       setActionPlans(ap.data);
       setTouchpoints(tp.data);
       setEntitlements(en.data);
+      setCases(cs.data);
     }).finally(() => setLoading(false));
   }, [accountId]);
 
@@ -79,8 +82,21 @@ function AccountDashboard({ accountId, account }: { accountId: number; account: 
   if (loading) return <Spinner aria-label="Loading" />;
 
   const unhealthy = clusters.filter((c) => c.health_state === "unhealthy" || (c.critical_alerts ?? 0) > 0);
+  const openCases = cases.filter((c) => !c.status?.toLowerCase().includes("closed"));
   const openRisks = risks.filter((r) => r.status === "Open");
   const completedPlans = actionPlans.filter((a) => a.status === "Done" || a.status === "Completed");
+
+  const sevBuckets: Record<string, { label: string; color: "red" | "orange" | "gold" | "blue" }> = {
+    "1": { label: "Urgent", color: "red" },
+    "2": { label: "High", color: "orange" },
+    "3": { label: "Normal", color: "gold" },
+    "4": { label: "Low", color: "blue" },
+  };
+  const openBySev = openCases.reduce<Record<string, number>>((acc, c) => {
+    const key = c.severity?.charAt(0) || "?";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
   const lastTouchpoint = touchpoints[0];
   const expiringEntitlements = entitlements.filter((e) => {
     if (!e.end_date) return false;
@@ -147,6 +163,35 @@ function AccountDashboard({ accountId, account }: { accountId: number; account: 
                 <Label color="red" isCompact style={{ marginTop: 8 }}>
                   {unhealthy.length} unhealthy
                 </Label>
+              )}
+            </CardBody>
+          </Card>
+        </GridItem>
+
+        {/* Support Cases */}
+        <GridItem md={4} sm={6}>
+          <Card isFullHeight isClickable onClick={() => navigate("/cases")}>
+            <CardTitle>Support Cases</CardTitle>
+            <CardBody>
+              <div style={{ fontSize: "2.5rem", fontWeight: 700, fontFamily: "Red Hat Display, sans-serif" }}>
+                {openCases.length}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: "var(--pf-t--global--text--color--subtle)" }}>
+                open of {cases.length} total
+              </div>
+              {openCases.length > 0 && (
+                <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                  {Object.entries(sevBuckets).map(([key, { label, color }]) =>
+                    openBySev[key] ? (
+                      <Label key={key} color={color} isCompact>
+                        {openBySev[key]} {label}
+                      </Label>
+                    ) : null
+                  )}
+                </div>
+              )}
+              {openCases.length === 0 && cases.length > 0 && (
+                <Label color="green" isCompact style={{ marginTop: 8 }}>All cases closed</Label>
               )}
             </CardBody>
           </Card>

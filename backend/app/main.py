@@ -116,11 +116,35 @@ async def lifespan(app: FastAPI):
                 f"accounts.{col} added",
             )
 
+        await _try_exec(
+            "ALTER TABLE accounts ADD COLUMN toolkit_sheet_id VARCHAR(255)",
+            "accounts.toolkit_sheet_id added",
+        )
+
+        for col, typedef in [
+            ("customer_area", "VARCHAR(255)"),
+            ("contact_classification", "VARCHAR(100)"),
+        ]:
+            await _try_exec(
+                f"ALTER TABLE action_plans ADD COLUMN {col} {typedef}",
+                f"action_plans.{col} added",
+            )
+
+        await _try_exec(
+            "ALTER TABLE engagements ALTER COLUMN customer_area DROP NOT NULL",
+            "engagements.customer_area now nullable",
+        )
+
         for tbl in ("account_entitlements", "account_assignments"):
             await _try_exec(
                 f"ALTER TABLE {tbl} ADD COLUMN product_id INTEGER REFERENCES products(id)",
                 f"{tbl}.product_id added",
             )
+
+        await _try_exec(
+            "ALTER TABLE support_cases ADD COLUMN last_modified_by VARCHAR(255)",
+            "support_cases.last_modified_by added",
+        )
 
         await _try_exec(
             """INSERT INTO account_assignments
@@ -193,7 +217,7 @@ from .routers import (  # noqa: E402
     health, customers, products, document_types, guides, providers,
     search, analytics, auth,
     accounts, verticals, segments, team, manager, admin_users,
-    clusters, entitlements, contacts, issues,
+    clusters, entitlements, contacts, cases, issues,
     action_plans, touchpoints, risks, engagements, lifecycle, nps,
     sync, reports, kcs,
 )
@@ -214,6 +238,7 @@ app.include_router(manager.router, prefix="/api", dependencies=_auth_dep)
 app.include_router(clusters.router, prefix="/api", dependencies=_auth_dep)
 app.include_router(entitlements.router, prefix="/api", dependencies=_auth_dep)
 app.include_router(contacts.router, prefix="/api", dependencies=_auth_dep)
+app.include_router(cases.router, prefix="/api", dependencies=_auth_dep)
 app.include_router(issues.router, prefix="/api", dependencies=_auth_dep)
 app.include_router(action_plans.router, prefix="/api", dependencies=_auth_dep)
 app.include_router(touchpoints.router, prefix="/api", dependencies=_auth_dep)

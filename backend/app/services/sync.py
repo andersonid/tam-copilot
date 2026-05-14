@@ -19,6 +19,7 @@ from ..models import (
     AccountEntitlement,
     Product,
     ProductLifecycle,
+    SupportCase,
 )
 from .hydra_client import HydraClient
 from .ocm_client import OcmClient
@@ -84,42 +85,82 @@ class SyncService:
             "strategic": account.strategic,
         }
 
-    # -- Entitlements (Hydra) --------------------------------------------------
+    # -- Entitlements (OCM subscriptions) -------------------------------------
 
     async def sync_entitlements(self, db: AsyncSession, account: Account) -> int:
-        """Pull entitlements from Hydra and upsert into local DB."""
-        if not self.hydra:
-            raise RuntimeError("Hydra client not configured")
+        """Replace cached entitlements with OCM subscription rows for the account.
 
-        raw = await self.hydra.list_entitlements(account.account_number)
-        if not raw:
-            return 0
+        The published Hydra Support API exposes ``/v1/accounts/{number}/contacts``
+        but **not** ``/v1/accounts/{number}/entitlements`` (that path is not in the
+        public OpenAPI catalog). Customer OpenShift subscriptions are listed under
+        Accounts Management / OCM by resolving the organization whose
+        ``ebs_account_id`` matches the Red Hat account number, then listing all
+        subscriptions in that organization.
+        """
+        if not self.ocm:
+            raise RuntimeError(
+                "OCM is not configured — cannot sync subscription entitlements. "
+                "Use the same Red Hat offline token as Hydra (OCM is initialized with it)."
+            )
+
+        org = await self.ocm.find_org_by_ebs_account(account.account_number)
+        if not org:
+            raise RuntimeError(
+                "No OCM organization found for this account number (ebs_account_id). "
+                "The SSO token may only see your home organization — use an OCM token "
+                "with access to the customer's organization to sync subscriptions."
+            )
+
+        subs = await self.ocm.list_all_subscriptions_for_organization(str(org["id"]))
 
         await db.execute(
             delete(AccountEntitlement).where(AccountEntitlement.account_id == account.id)
         )
 
         count = 0
-        for item in raw:
-            name = item.get("name", item.get("entitlementName", "Unknown"))
-            sku = item.get("sku", item.get("skuNumber", "")) or None
-            pid = await self._guess_entitlement_product_id(db, str(name), sku)
+        for sub in subs:
+            plan = sub.get("plan") or {}
+            plan_id = str(plan.get("id") or plan.get("name") or "").strip()
+            display = str(sub.get("display_name") or "").strip()
+            ext_cluster = str(sub.get("external_cluster_id") or "").strip()
+            title_bits = [b for b in (display, plan_id) if b]
+            name = (
+                " — ".join(title_bits)
+                if title_bits
+                else f"OpenShift subscription {sub.get('id', '')}"
+            )[:500]
+
+            sku_raw = ext_cluster or plan_id or str(sub.get("cluster_id") or sub.get("id") or "")
+            sku = (sku_raw[:100] if sku_raw else None) or None
+
+            pid = await self._guess_entitlement_product_id(db, name, sku)
+
+            start_raw = (
+                sub.get("creation_timestamp")
+                or sub.get("created_at")
+                or sub.get("createdAt")
+            )
+            start_s = str(start_raw) if start_raw else None
+
+            end_raw = sub.get("contract_end_date") or sub.get("expiration_date")
+            end_s = str(end_raw) if end_raw else None
+
             ent = AccountEntitlement(
                 account_id=account.id,
                 product_id=pid,
                 sku=sku,
                 entitlement_name=name,
-                service_level=item.get("serviceLevel", ""),
-                support_level=item.get("supportLevel", ""),
-                start_date=_parse_date(item.get("startDate")),
-                end_date=_parse_date(item.get("endDate")),
-                quantity=item.get("quantity", 1),
+                service_level=(str(sub.get("service_system_type") or sub.get("billing_model_code") or "") or None),
+                support_level=(str(sub.get("support_level") or "") or None),
+                start_date=_parse_date(start_s) if start_s else None,
+                end_date=_parse_date(end_s) if end_s else None,
+                quantity=1,
             )
             db.add(ent)
             count += 1
 
         await db.commit()
-        logger.info("sync.entitlements | account=%s synced=%d", account.account_number, count)
+        logger.info("sync.entitlements | account=%s synced=%d (OCM subscriptions)", account.account_number, count)
         return count
 
     # -- Contacts (Hydra) ------------------------------------------------------
@@ -164,6 +205,55 @@ class SyncService:
 
         await db.commit()
         logger.info("sync.contacts | account=%s synced=%d", account.account_number, count)
+        return count
+
+    # -- Cases (Hydra) ----------------------------------------------------------
+
+    async def sync_cases(self, db: AsyncSession, account: Account) -> int:
+        """Pull support cases from Hydra and replace local cache."""
+        if not self.hydra:
+            raise RuntimeError("Hydra client not configured")
+
+        raw = await self.hydra.list_cases(
+            account.account_number, include_closed=True, max_results=500,
+        )
+        if not raw:
+            return 0
+
+        await db.execute(
+            delete(SupportCase).where(SupportCase.account_id == account.id)
+        )
+
+        count = 0
+        for item in raw:
+            sc = SupportCase(
+                account_id=account.id,
+                case_number=item.get("caseNumber", ""),
+                summary=item.get("summary", ""),
+                status=item.get("status", ""),
+                severity=item.get("severity"),
+                product=item.get("product"),
+                version=item.get("version"),
+                case_type=item.get("caseType"),
+                owner=item.get("ownerId"),
+                contact_name=item.get("contactName"),
+                contact_sso=item.get("contactSSOName"),
+                sla=item.get("entitlementSla"),
+                sbr_groups=", ".join(item.get("sbrGroups", [])) if item.get("sbrGroups") else None,
+                is_proactive=bool(item.get("proactive", False)),
+                is_escalated=bool(item.get("customerEscalation", False)),
+                cluster_id=item.get("openshiftClusterID"),
+                created_date=_parse_datetime(item.get("createdDate")),
+                last_modified_date=_parse_datetime(item.get("lastModifiedDate")),
+                last_modified_by=item.get("lastModifiedById"),
+                closed_date=_parse_datetime(item.get("lastClosedAt")),
+                resolution=item.get("resolution"),
+            )
+            db.add(sc)
+            count += 1
+
+        await db.commit()
+        logger.info("sync.cases | account=%s synced=%d", account.account_number, count)
         return count
 
     # -- Clusters (OCM) --------------------------------------------------------
@@ -265,9 +355,14 @@ class SyncService:
         results: dict[str, int] = {}
         if self.hydra:
             await self.sync_account_metadata(db, account)
-            results["entitlements"] = await self.sync_entitlements(db, account)
             results["contacts"] = await self.sync_contacts(db, account)
+            results["cases"] = await self.sync_cases(db, account)
         if self.ocm:
+            try:
+                results["entitlements"] = await self.sync_entitlements(db, account)
+            except RuntimeError as exc:
+                logger.warning("sync_all.entitlements | account=%s skipped: %s", account.account_number, exc)
+                results["entitlements"] = -1
             results["clusters"] = await self.sync_clusters(db, account)
         if self.lifecycle:
             results["lifecycle"] = await self.sync_lifecycle(db, account)
