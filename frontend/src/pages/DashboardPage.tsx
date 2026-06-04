@@ -49,6 +49,8 @@ function AccountDashboard({ accountId, account }: { accountId: number; account: 
   const [touchpoints, setTouchpoints] = useState<any[]>([]);
   const [entitlements, setEntitlements] = useState<any[]>([]);
   const [cases, setCases] = useState<any[]>([]);
+  const [issues, setIssues] = useState<any[]>([]);
+  const [nps, setNps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { triggerSync, syncing, error: syncError } = useSync(accountId);
 
@@ -62,13 +64,17 @@ function AccountDashboard({ accountId, account }: { accountId: number; account: 
       api.get("/touchpoints", { params: p }),
       api.get("/entitlements", { params: p }),
       api.get("/cases", { params: p }),
-    ]).then(([cl, ri, ap, tp, en, cs]) => {
+      api.get("/issues", { params: p }),
+      api.get("/nps", { params: p }),
+    ]).then(([cl, ri, ap, tp, en, cs, is, np]) => {
       setClusters(cl.data);
       setRisks(ri.data);
       setActionPlans(ap.data);
       setTouchpoints(tp.data);
       setEntitlements(en.data);
       setCases(cs.data);
+      setIssues(is.data);
+      setNps(np.data);
     }).finally(() => setLoading(false));
   }, [accountId]);
 
@@ -103,6 +109,14 @@ function AccountDashboard({ accountId, account }: { accountId: number; account: 
     const diff = (new Date(e.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     return diff >= 0 && diff <= 90;
   });
+
+  const openIssues = issues.filter((i) => !["Closed", "Done", "Resolved"].includes(i.status));
+  const npsAvg = nps.length > 0
+    ? (nps.reduce((sum: number, n: any) => sum + n.score, 0) / nps.length).toFixed(1)
+    : null;
+  const npsPromoters = nps.filter((n: any) => n.score >= 9).length;
+  const npsDetractors = nps.filter((n: any) => n.score < 7).length;
+  const npsScore = nps.length > 0 ? Math.round(((npsPromoters - npsDetractors) / nps.length) * 100) : null;
 
   return (
     <>
@@ -281,6 +295,55 @@ function AccountDashboard({ accountId, account }: { accountId: number; account: 
                 <Label color="orange" isCompact style={{ marginTop: 8 }}>
                   {expiringEntitlements.length} expiring in 90 days
                 </Label>
+              )}
+            </CardBody>
+          </Card>
+        </GridItem>
+
+        {/* Issues */}
+        <GridItem md={4} sm={6}>
+          <Card isFullHeight isClickable onClick={() => navigate("/issues")}>
+            <CardTitle>Issues</CardTitle>
+            <CardBody>
+              <div style={{ fontSize: "2.5rem", fontWeight: 700, fontFamily: "Red Hat Display, sans-serif" }}>
+                {openIssues.length}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: "var(--pf-t--global--text--color--subtle)" }}>
+                open of {issues.length} total
+              </div>
+              {openIssues.length > 0 && (
+                <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                  {openIssues.filter((i) => i.priority === "Blocker" || i.priority === "Critical").length > 0 && (
+                    <Label color="red" isCompact>
+                      {openIssues.filter((i) => i.priority === "Blocker" || i.priority === "Critical").length} critical
+                    </Label>
+                  )}
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </GridItem>
+
+        {/* NPS */}
+        <GridItem md={4} sm={6}>
+          <Card isFullHeight isClickable onClick={() => navigate("/nps")}>
+            <CardTitle>NPS</CardTitle>
+            <CardBody>
+              {nps.length === 0 ? (
+                <div style={{ color: "var(--pf-t--global--text--color--subtle)" }}>No surveys recorded</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: "2.5rem", fontWeight: 700, fontFamily: "Red Hat Display, sans-serif", color: npsScore !== null && npsScore >= 50 ? "#3E8635" : npsScore !== null && npsScore >= 0 ? "#EC7A08" : "#C9190B" }}>
+                    {npsScore}
+                  </div>
+                  <div style={{ fontSize: "0.85rem", color: "var(--pf-t--global--text--color--subtle)" }}>
+                    NPS Score (avg {npsAvg})
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <Label color="green" isCompact>{npsPromoters}P</Label>
+                    <Label color="red" isCompact>{npsDetractors}D</Label>
+                  </div>
+                </>
               )}
             </CardBody>
           </Card>
