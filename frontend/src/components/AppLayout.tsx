@@ -49,6 +49,7 @@ import {
   GlobeIcon,
   UserIcon,
   DatabaseIcon,
+  TrendUpIcon,
 } from "@patternfly/react-icons";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -339,6 +340,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <NavItem isActive={isActive("/engagement")} onClick={() => navTo("/engagement")}>
               <ChartBarIcon style={{ marginRight: 8 }} />
               Engagement
+            </NavItem>
+
+            <NavItem isActive={isActive("/nps")} onClick={() => navTo("/nps")}>
+              <TrendUpIcon style={{ marginRight: 8 }} />
+              NPS
             </NavItem>
 
             <Divider style={{ margin: "8px 0" }} />

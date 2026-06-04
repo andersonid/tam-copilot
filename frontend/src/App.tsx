@@ -33,6 +33,7 @@ import { TamReportPage } from "./pages/TamReportPage";
 import { KcsArticlePage } from "./pages/KcsArticlePage";
 import { AssessmentPage } from "./pages/AssessmentPage";
 import { SchedulePage } from "./pages/SchedulePage";
+import { NpsPage } from "./pages/NpsPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 
 function AuthenticatedApp() {
@@ -62,6 +63,7 @@ function AuthenticatedApp() {
           <Route path="/touchpoints" element={<TouchpointsPage />} />
           <Route path="/risks" element={<RisksPage />} />
           <Route path="/engagement" element={<EngagementRoutePage />} />
+          <Route path="/nps" element={<NpsPage />} />
 
           {mgmt && (
             <>
