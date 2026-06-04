@@ -30,6 +30,9 @@ import { SearchPage } from "./pages/SearchPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { PublicGuidePage } from "./pages/PublicGuidePage";
 import { TamReportPage } from "./pages/TamReportPage";
+import { KcsArticlePage } from "./pages/KcsArticlePage";
+import { AssessmentPage } from "./pages/AssessmentPage";
+import { SchedulePage } from "./pages/SchedulePage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 
 function AuthenticatedApp() {
@@ -81,6 +84,9 @@ function AuthenticatedApp() {
 
           <Route path="/content" element={<GuidesPage />} />
           <Route path="/content/report" element={<TamReportPage />} />
+          <Route path="/content/kcs" element={<KcsArticlePage />} />
+          <Route path="/content/assessment" element={<AssessmentPage />} />
+          <Route path="/content/schedule" element={<SchedulePage />} />
           <Route path="/guides" element={<GuidesPage />} />
           <Route path="/guides/new" element={<GuideCreatePage />} />
           <Route path="/guides/import" element={<GuideImportPage />} />
